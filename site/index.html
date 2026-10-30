@@ -8,13 +8,98 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>OpenMemoryOptimizer</title>
-  <meta name="description" content="A free, open-source memory optimizer for Windows, written in Rust. Fast, lightweight and safe.">
-  <meta property="og:title" content="OpenMemoryOptimizer">
-  <meta property="og:description" content="A free, open-source memory optimizer for Windows, written in Rust.">
-  <meta property="og:image" content="icon.png">
+  <title>OpenMemoryOptimizer – Free, open-source memory optimizer for Windows</title>
+  <meta name="description" content="OpenMemoryOptimizer is a free, open-source RAM cleaner for Windows 10 and 11, written in Rust. Free up memory in one click, automatically when memory runs low, or on a schedule. No ads, no tracking.">
+  <link rel="canonical" href="https://luciancaetano.github.io/open-memory-optimizer/">
+  <link rel="alternate" type="text/plain" title="llms.txt" href="https://luciancaetano.github.io/open-memory-optimizer/llms.txt">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="OpenMemoryOptimizer">
+  <meta property="og:url" content="https://luciancaetano.github.io/open-memory-optimizer/">
+  <meta property="og:title" content="OpenMemoryOptimizer – Free memory optimizer for Windows">
+  <meta property="og:description" content="A free, open-source RAM cleaner for Windows 10 and 11, written in Rust. One-click, automatic and scheduled cleanups.">
+  <meta property="og:image" content="https://luciancaetano.github.io/open-memory-optimizer/icon.png">
+  <meta property="og:image:alt" content="OpenMemoryOptimizer icon">
+  <meta name="twitter:card" content="summary">
   <meta name="theme-color" content="#0d0f15">
   <link rel="icon" type="image/png" href="favicon.png">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "SoftwareApplication",
+        "@id": "https://luciancaetano.github.io/open-memory-optimizer/#app",
+        "name": "OpenMemoryOptimizer",
+        "description": "A free, open-source memory (RAM) optimizer for Windows 10 and 11, written in Rust. It frees memory in one click, automatically when memory runs low or on a timer, and on a schedule.",
+        "url": "https://luciancaetano.github.io/open-memory-optimizer/",
+        "applicationCategory": "UtilitiesApplication",
+        "applicationSubCategory": "Memory optimizer",
+        "operatingSystem": "Windows 10, Windows 11 (64-bit)",
+        "inLanguage": ["en", "pt-BR"],
+        "isAccessibleForFree": true,
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "downloadUrl": "https://github.com/luciancaetano/open-memory-optimizer/releases/latest",
+        "screenshot": "https://luciancaetano.github.io/open-memory-optimizer/screenshot.webp",
+        "image": "https://luciancaetano.github.io/open-memory-optimizer/icon.png",
+        "license": "https://www.gnu.org/licenses/gpl-3.0.html",
+        "author": { "@type": "Person", "name": "Lucian Caetano", "url": "https://github.com/luciancaetano" },
+        "sameAs": ["https://github.com/luciancaetano/open-memory-optimizer"],
+        "featureList": [
+          "Live view of memory usage",
+          "One-click memory cleanup",
+          "Automatic cleanup when memory runs low or on a timer",
+          "Scheduled cleanups: daily, weekly, monthly, at sign-in or when idle",
+          "Runs in the system tray",
+          "Installer or portable zip",
+          "English and Brazilian Portuguese interface"
+        ]
+      },
+      {
+        "@type": "SoftwareSourceCode",
+        "name": "OpenMemoryOptimizer source code",
+        "codeRepository": "https://github.com/luciancaetano/open-memory-optimizer",
+        "programmingLanguage": "Rust",
+        "license": "https://www.gnu.org/licenses/gpl-3.0.html",
+        "targetProduct": { "@id": "https://luciancaetano.github.io/open-memory-optimizer/#app" }
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Is OpenMemoryOptimizer free?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Yes. OpenMemoryOptimizer is free and open source under the GPL-3.0-or-later license. It has no ads, no paid tier and needs no account." }
+          },
+          {
+            "@type": "Question",
+            "name": "Is OpenMemoryOptimizer safe to use?",
+            "acceptedAnswer": { "@type": "Answer", "text": "It only uses memory-management features that Windows already provides. It does not close apps or delete files, collects no data and never connects to the internet. The full source code is public, and each release publishes SHA-256 checksums so you can verify the download." }
+          },
+          {
+            "@type": "Question",
+            "name": "Why does it ask for administrator rights?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Windows only lets programs with administrator rights free memory held by other apps and clear cached memory. Without those rights a memory optimizer can do very little." }
+          },
+          {
+            "@type": "Question",
+            "name": "Will freeing memory make my PC faster?",
+            "acceptedAnswer": { "@type": "Answer", "text": "It helps most when memory is nearly full and the PC starts slowing down or swapping to disk. On a PC with plenty of free memory the difference is small, and files Windows had cached may open a little slower the first time afterwards. The app shows exactly how much memory each cleanup freed." }
+          },
+          {
+            "@type": "Question",
+            "name": "Why does Windows say \"Windows protected your PC\"?",
+            "acceptedAnswer": { "@type": "Answer", "text": "The app is not code-signed yet, so SmartScreen does not recognize it. Click More info, then Run anyway. You can check the file against SHA256SUMS.txt from the same release." }
+          },
+          {
+            "@type": "Question",
+            "name": "Which versions of Windows does it support?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Windows 10 and Windows 11, 64-bit. It comes as an installer or as a portable zip that runs without installation." }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
   <style>
     :root {
       --bg: #0d0f15;
@@ -225,6 +310,35 @@
       transform: translateY(-2px);
     }
 
+    .section-lead {
+      max-width: 760px;
+      margin: 0 auto 16px;
+      color: var(--muted);
+    }
+    .how { padding-bottom: 72px; }
+    .how ol {
+      max-width: 760px;
+      margin: 0 auto 16px;
+      padding-left: 1.4em;
+    }
+    .how li { margin-bottom: 8px; }
+    .how li::marker { color: var(--cyan); font-weight: 600; }
+
+    .faq { padding-bottom: 72px; }
+    .faq-list { max-width: 760px; margin: 0 auto; }
+    .faq details {
+      margin-bottom: 10px;
+      border: 1px solid var(--stroke);
+      border-radius: 12px;
+      background: var(--card);
+    }
+    .faq summary {
+      padding: 14px 18px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .faq details p { margin: 0; padding: 0 18px 16px; color: var(--muted); }
+
     .final {
       padding: 48px 24px;
       margin-bottom: 56px;
@@ -274,8 +388,9 @@
       <img class="logo" src="icon.png" alt="OpenMemoryOptimizer icon" width="96" height="96">
       <h1>Free up memory on Windows<br><span class="grad">in one click.</span></h1>
       <p class="lead">
-        OpenMemoryOptimizer is a small, free memory optimizer for Windows.
-        It is written in Rust and fully open source.
+        OpenMemoryOptimizer is a free, open-source memory (RAM) optimizer for Windows 10 and 11.
+        It frees memory that open apps and Windows are holding but not using, with one click,
+        automatically when memory runs low, or on a schedule. It is written in Rust.
       </p>
       <ul class="tags">
         <li><b>Rust</b> native</li>
@@ -332,10 +447,60 @@
         <li>Live view of your memory usage</li>
         <li>One-click cleanup</li>
         <li>Automatic cleanup when memory runs low or on a timer</li>
-        <li>Scheduled cleanups: daily, weekly or at sign-in</li>
+        <li>Scheduled cleanups: daily, weekly, monthly, at sign-in or when idle</li>
         <li>Runs quietly in the system tray</li>
         <li>Installer or portable zip, your choice</li>
+        <li>In English and Portuguese (Brazil)</li>
       </ul>
+    </section>
+
+    <section class="how wrap" id="how-it-works">
+      <h2>How it works</h2>
+      <p class="section-lead">
+        Each cleanup runs a few steps in a fixed order, then waits three seconds for Windows to settle
+        and shows how much memory was actually freed. You choose which optional steps run.
+      </p>
+      <ol>
+        <li><b>Clear clipboard</b> (optional): empties whatever you last copied.</li>
+        <li><b>Deep clean</b> (optional): briefly uses up to 1 GB of memory to push unused data out. Can take a few minutes.</li>
+        <li><b>Free memory from open apps</b>: asks every running app to give back memory it isn't using right now (Windows working-set trimming).</li>
+        <li><b>Clear cached memory</b> (optional): removes files Windows kept in memory for quick access (the standby list).</li>
+        <li><b>Tidy up the system cache</b>: trims the memory Windows uses to speed up opening files.</li>
+      </ol>
+      <p class="section-lead">
+        Automatic cleanup can run when free memory drops below a level you pick, checked every
+        5 minutes and optionally only while the computer is idle, or every set number of minutes.
+      </p>
+    </section>
+
+    <section class="faq wrap" id="faq">
+      <h2>Frequently asked questions</h2>
+      <div class="faq-list">
+        <details>
+          <summary>Is OpenMemoryOptimizer free?</summary>
+          <p>Yes. OpenMemoryOptimizer is free and open source under the GPL-3.0-or-later license. It has no ads, no paid tier and needs no account.</p>
+        </details>
+        <details>
+          <summary>Is OpenMemoryOptimizer safe to use?</summary>
+          <p>It only uses memory-management features that Windows already provides. It does not close apps or delete files, collects no data and never connects to the internet. The full source code is public, and each release publishes SHA-256 checksums so you can verify the download.</p>
+        </details>
+        <details>
+          <summary>Why does it ask for administrator rights?</summary>
+          <p>Windows only lets programs with administrator rights free memory held by other apps and clear cached memory. Without those rights a memory optimizer can do very little.</p>
+        </details>
+        <details>
+          <summary>Will freeing memory make my PC faster?</summary>
+          <p>It helps most when memory is nearly full and the PC starts slowing down or swapping to disk. On a PC with plenty of free memory the difference is small, and files Windows had cached may open a little slower the first time afterwards. The app shows exactly how much memory each cleanup freed.</p>
+        </details>
+        <details>
+          <summary>Why does Windows say "Windows protected your PC"?</summary>
+          <p>The app is not code-signed yet, so SmartScreen does not recognize it. Click <b>More info</b>, then <b>Run anyway</b>. You can check the file against <code>SHA256SUMS.txt</code> from the same release.</p>
+        </details>
+        <details>
+          <summary>Which versions of Windows does it support?</summary>
+          <p>Windows 10 and Windows 11, 64-bit. It comes as an installer or as a portable zip that runs without installation.</p>
+        </details>
+      </div>
     </section>
 
     <section class="wrap">
@@ -359,7 +524,7 @@
 
   <footer>
     <div class="wrap">
-      <span>© 2026 Lucian Caetano · <a href="https://github.com/luciancaetano/open-memory-optimizer/blob/main/LICENSE">GPL-3.0-or-later</a></span>
+      <span>© 2026 Lucian Caetano · <a href="https://github.com/luciancaetano/open-memory-optimizer/blob/main/LICENSE">GPL-3.0-or-later</a> · Updated <time datetime="2026-10-30">October 30, 2026</time></span>
       <span><a href="https://github.com/luciancaetano/open-memory-optimizer/releases">All releases</a> · <a href="https://github.com/luciancaetano/open-memory-optimizer/issues">Report a problem</a></span>
     </div>
   </footer>
