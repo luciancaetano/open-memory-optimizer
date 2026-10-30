@@ -241,14 +241,85 @@
     }
 
     .shot { padding-top: 24px; padding-bottom: 64px; }
-    .shot img {
-      display: block;
-      width: 100%;
-      max-width: 860px;
-      height: auto;
-      margin: 0 auto;
+    .slider { position: relative; max-width: 860px; margin: 0 auto; }
+    .slides {
+      position: relative;
+      aspect-ratio: 1000 / 750;
       border-radius: 8px;
+      overflow: hidden;
       box-shadow: 0 30px 80px rgba(0, 0, 0, .55);
+      touch-action: pan-y;
+    }
+    .slide {
+      position: absolute;
+      inset: 0;
+      margin: 0;
+      opacity: 0;
+      transition: opacity .6s ease;
+    }
+    .slide.is-active { opacity: 1; }
+    .slide img { display: block; width: 100%; height: 100%; }
+    .slider-btn {
+      position: absolute;
+      top: 50%;
+      display: grid;
+      place-items: center;
+      width: 44px;
+      height: 44px;
+      border: 1px solid var(--stroke);
+      border-radius: 50%;
+      background: rgba(23, 27, 37, .85);
+      color: var(--text);
+      cursor: pointer;
+      transform: translateY(-50%);
+      transition: background .15s, border-color .15s;
+    }
+    .slider-btn:hover { background: var(--accent); border-color: var(--accent); }
+    .slider-btn svg { width: 20px; height: 20px; }
+    .slider-btn.prev { left: -22px; }
+    .slider-btn.next { right: -22px; }
+    .slider-nav {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 22px;
+    }
+    .dot {
+      position: relative;
+      overflow: hidden;
+      padding: 7px 14px;
+      border: 1px solid var(--stroke);
+      border-radius: 999px;
+      background: var(--card);
+      color: var(--muted);
+      font: inherit;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .dot:hover { color: var(--text); }
+    .dot.is-active { color: #fff; border-color: var(--accent); background: rgba(109, 93, 252, .18); }
+    /* Time left on the current slide while it plays by itself. */
+    .dot.is-active::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      bottom: 0;
+      height: 2px;
+      width: 100%;
+      background: var(--accent-hi);
+      transform-origin: left;
+      transform: scaleX(0);
+    }
+    .slider-playing .dot.is-active::after { animation: slide-progress var(--slide-ms, 5000ms) linear forwards; }
+    .slider-paused .dot.is-active::after { animation-play-state: paused; }
+    @keyframes slide-progress { to { transform: scaleX(1); } }
+    @media (max-width: 960px) {
+      .slider-btn.prev { left: 8px; }
+      .slider-btn.next { right: 8px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .slide { transition: none; }
     }
 
     h2 {
@@ -412,8 +483,35 @@
       <p class="release-info">Free · No ads · No account</p>
     </section>
 
-    <section class="shot wrap">
-      <img src="screenshot.webp" alt="The Open Memory Optimizer window showing memory usage and the result of a cleanup" width="1000" height="750">
+    <section class="shot wrap" id="screenshots" aria-roledescription="carousel" aria-label="Screenshots">
+      <div class="slider">
+        <div class="slides" aria-live="off">
+          <figure class="slide is-active" aria-roledescription="slide" aria-label="1 of 4: Overview">
+            <img src="screenshot.webp" alt="The Open Memory Optimizer window showing memory usage and the result of a cleanup" width="1000" height="750">
+          </figure>
+          <figure class="slide" aria-roledescription="slide" aria-label="2 of 4: Game Booster" aria-hidden="true">
+            <img src="game-booster.webp" alt="The Game Booster page showing a boosted game with live processor, memory, graphics, video memory and disk use" width="1000" height="750" loading="lazy">
+          </figure>
+          <figure class="slide" aria-roledescription="slide" aria-label="3 of 4: Settings" aria-hidden="true">
+            <img src="settings.webp" alt="The Settings page with language, what to clean and automatic cleanup options" width="1000" height="750" loading="lazy">
+          </figure>
+          <figure class="slide" aria-roledescription="slide" aria-label="4 of 4: Schedule" aria-hidden="true">
+            <img src="schedule.webp" alt="The Schedule page for daily, weekly, monthly, idle or sign-in cleanups" width="1000" height="750" loading="lazy">
+          </figure>
+        </div>
+        <button class="slider-btn prev" type="button" aria-label="Previous screenshot">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
+        <button class="slider-btn next" type="button" aria-label="Next screenshot">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+        </button>
+      </div>
+      <div class="slider-nav">
+        <button class="dot is-active" type="button" aria-label="Show Overview" aria-current="true">Overview</button>
+        <button class="dot" type="button" aria-label="Show Game Booster">Game Booster</button>
+        <button class="dot" type="button" aria-label="Show Settings">Settings</button>
+        <button class="dot" type="button" aria-label="Show Schedule">Schedule</button>
+      </div>
     </section>
 
     <section class="wrap">
@@ -464,10 +562,7 @@
         live. One click puts it first: higher priority, no energy saving slowdowns, maximum performance
         power mode and more free memory. Everything goes back to normal when you restore or close the game.
       </p>
-    </section>
-
-    <section class="shot wrap">
-      <img src="game-booster.webp" alt="The Game Booster page showing a boosted game with live processor, memory, graphics, video memory and disk use" width="1000" height="750" loading="lazy">
+      <p class="section-lead"><a href="#screenshots" data-slide="1">See the Game Booster screen</a></p>
     </section>
 
     <section class="how wrap" id="how-it-works">
@@ -545,5 +640,78 @@
     </div>
   </footer>
 
+  <script>
+    // Screenshot slider: plays by itself, pauses on hover, focus or a hidden tab,
+    // and never auto-plays when the visitor asked for reduced motion.
+    (function () {
+      var root = document.getElementById("screenshots");
+      if (!root) return;
+      var slides = root.querySelectorAll(".slide");
+      var dots = root.querySelectorAll(".dot");
+      var DELAY = 5000;
+      var current = 0;
+      var timer = null;
+      var paused = false;
+      var still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      root.style.setProperty("--slide-ms", DELAY + "ms");
+
+      function show(i) {
+        current = (i + slides.length) % slides.length;
+        slides.forEach(function (s, n) {
+          s.classList.toggle("is-active", n === current);
+          s.setAttribute("aria-hidden", n === current ? "false" : "true");
+        });
+        dots.forEach(function (d, n) {
+          d.classList.remove("is-active");
+          d.removeAttribute("aria-current");
+          if (n === current) {
+            void d.offsetWidth; // restart the progress bar
+            d.classList.add("is-active");
+            d.setAttribute("aria-current", "true");
+          }
+        });
+        schedule();
+      }
+      function schedule() {
+        clearTimeout(timer);
+        if (still || paused) return;
+        timer = setTimeout(function () { show(current + 1); }, DELAY);
+      }
+      function pause(on) {
+        paused = on;
+        root.classList.toggle("slider-paused", on);
+        if (on) clearTimeout(timer); else show(current);
+      }
+
+      if (!still) root.classList.add("slider-playing");
+      root.querySelector(".prev").addEventListener("click", function () { show(current - 1); });
+      root.querySelector(".next").addEventListener("click", function () { show(current + 1); });
+      dots.forEach(function (d, n) { d.addEventListener("click", function () { show(n); }); });
+      root.addEventListener("mouseenter", function () { pause(true); });
+      root.addEventListener("mouseleave", function () { pause(false); });
+      root.addEventListener("focusin", function () { pause(true); });
+      root.addEventListener("focusout", function (e) { if (!root.contains(e.relatedTarget)) pause(false); });
+      root.addEventListener("keydown", function (e) {
+        if (e.key === "ArrowLeft") show(current - 1);
+        if (e.key === "ArrowRight") show(current + 1);
+      });
+      document.addEventListener("visibilitychange", function () {
+        if (document.hidden) clearTimeout(timer); else schedule();
+      });
+      var startX = null;
+      var area = root.querySelector(".slides");
+      area.addEventListener("touchstart", function (e) { startX = e.touches[0].clientX; }, { passive: true });
+      area.addEventListener("touchend", function (e) {
+        if (startX === null) return;
+        var dx = e.changedTouches[0].clientX - startX;
+        if (Math.abs(dx) > 40) show(current + (dx < 0 ? 1 : -1));
+        startX = null;
+      });
+      document.querySelectorAll("[data-slide]").forEach(function (a) {
+        a.addEventListener("click", function () { show(+a.getAttribute("data-slide")); });
+      });
+      show(0);
+    })();
+  </script>
 </body>
 </html>
