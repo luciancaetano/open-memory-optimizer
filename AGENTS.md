@@ -65,8 +65,10 @@ The page list is `PAGES` in `src/gui/main.rs`. The `dashboard_result` page loads
 `.github/workflows/release.yml` runs on every push to `main`. A Linux job compares the `[package]`
 version in `Cargo.toml` with the highest existing `vX.Y.Z` release (semver, `sort -V`). Only if it is
 greater does a Windows job run `cargo test --locked` and `build.cmd installer`, then create the release
-`v<version>` with the installer, the zip and `SHA256SUMS.txt`. To release, bump the version in
-`Cargo.toml` (and commit the updated `Cargo.lock`), then push. The About page reads the version from
+`v<version>` with the installer, the zip and `SHA256SUMS.txt`. To release, run `bump-version.cmd`
+(`scripts/bump-version.ps1`). It bumps major/minor/patch in `Cargo.toml`, `Cargo.lock` and the `.iss`,
+then optionally commits `chore: release vX.Y.Z` and pushes. It must not create a git tag: the workflow
+creates the tag with the release and fails if the tag already exists. The About page reads the version from
 `CARGO_PKG_VERSION`.
 
 ## Architecture
