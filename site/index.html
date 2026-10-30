@@ -1,0 +1,383 @@
+<!doctype html>
+<!--
+  OpenMemoryOptimizer - project landing page (GitHub Pages)
+  Copyright (C) 2026 Lucian Caetano
+  SPDX-License-Identifier: GPL-3.0-or-later
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OpenMemoryOptimizer</title>
+  <meta name="description" content="A free, open-source memory optimizer for Windows, written in Rust. Fast, lightweight and safe.">
+  <meta property="og:title" content="OpenMemoryOptimizer">
+  <meta property="og:description" content="A free, open-source memory optimizer for Windows, written in Rust.">
+  <meta property="og:image" content="icon.png">
+  <meta name="theme-color" content="#0d0f15">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <style>
+    :root {
+      --bg: #0d0f15;
+      --card: #171b25;
+      --stroke: #262b39;
+      --text: #e7eaf2;
+      --muted: #8c94a8;
+      --cyan: #22d3ee;
+      --violet: #8b5cf6;
+      --accent: #6d5dfc;
+      --accent-hi: #8173ff;
+      --green: #34d399;
+      --amber: #fbbf24;
+      color-scheme: dark;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font: 16px/1.6 "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      background:
+        radial-gradient(60rem 30rem at 15% -10%, rgba(139, 92, 246, .18), transparent 70%),
+        radial-gradient(50rem 28rem at 95% 0%, rgba(34, 211, 238, .12), transparent 70%);
+    }
+    a { color: var(--cyan); }
+    .wrap { max-width: 1040px; margin: 0 auto; padding: 0 16px; }
+
+    header .wrap {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 68px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--text);
+      font-weight: 600;
+      text-decoration: none;
+    }
+    .brand img { width: 30px; height: 30px; }
+    .nav-link {
+      color: var(--muted);
+      font-size: 15px;
+      text-decoration: none;
+    }
+    .nav-link:hover { color: var(--text); }
+
+    .hero { padding-top: 56px; padding-bottom: 40px; text-align: center; }
+    .hero .logo {
+      width: 96px;
+      height: 96px;
+      filter: drop-shadow(0 12px 32px rgba(109, 93, 252, .45));
+    }
+    h1 {
+      margin: 20px 0 12px;
+      font-size: clamp(32px, 6vw, 54px);
+      line-height: 1.1;
+      letter-spacing: -.02em;
+    }
+    .grad {
+      background: linear-gradient(90deg, var(--cyan), var(--violet));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .lead {
+      max-width: 620px;
+      margin: 0 auto;
+      color: var(--muted);
+      font-size: clamp(17px, 2.4vw, 19px);
+    }
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 8px;
+      margin: 24px 0 0;
+      padding: 0;
+      list-style: none;
+    }
+    .tags li {
+      padding: 4px 12px;
+      border: 1px solid var(--stroke);
+      border-radius: 999px;
+      background: rgba(23, 27, 37, .7);
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .tags b { color: var(--text); font-weight: 600; }
+
+    .cta {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 12px;
+      margin-top: 32px;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 26px;
+      border-radius: 12px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: background .15s, border-color .15s, transform .15s;
+    }
+    .btn:hover { transform: translateY(-1px); }
+    .btn svg { width: 20px; height: 20px; flex: none; }
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 10px 30px rgba(109, 93, 252, .35);
+    }
+    .btn-primary:hover { background: var(--accent-hi); }
+    .btn-ghost {
+      border: 1px solid var(--stroke);
+      background: var(--card);
+      color: var(--text);
+    }
+    .btn-ghost:hover { border-color: #3a4157; }
+    .release-info {
+      min-height: 1.6em;
+      margin: 14px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .shot { padding-top: 24px; padding-bottom: 64px; }
+    .shot img {
+      display: block;
+      width: 100%;
+      max-width: 860px;
+      height: auto;
+      margin: 0 auto;
+      border-radius: 8px;
+      box-shadow: 0 30px 80px rgba(0, 0, 0, .55);
+    }
+
+    h2 {
+      margin: 0 0 24px;
+      font-size: clamp(24px, 4vw, 32px);
+      letter-spacing: -.01em;
+      text-align: center;
+    }
+    .pillars {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+      padding-bottom: 64px;
+    }
+    .card {
+      padding: 24px;
+      border: 1px solid var(--stroke);
+      border-radius: 14px;
+      background: var(--card);
+    }
+    .card h3 {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 0 0 8px;
+      font-size: 19px;
+    }
+    .card p { margin: 0; color: var(--muted); }
+    .icon {
+      display: grid;
+      place-items: center;
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: rgba(109, 93, 252, .15);
+      color: var(--accent-hi);
+    }
+    .icon svg { width: 20px; height: 20px; }
+    .icon.cyan { background: rgba(34, 211, 238, .12); color: var(--cyan); }
+    .icon.green { background: rgba(52, 211, 153, .12); color: var(--green); }
+    .icon.amber { background: rgba(251, 191, 36, .12); color: var(--amber); }
+
+    .features { padding-bottom: 72px; }
+    .features ul {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 12px 24px;
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 0;
+      list-style: none;
+    }
+    .features li { display: flex; gap: 10px; align-items: baseline; }
+    .features li::before {
+      content: "";
+      flex: none;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      transform: translateY(-2px);
+    }
+
+    .final {
+      padding: 48px 24px;
+      margin-bottom: 56px;
+      border: 1px solid var(--stroke);
+      border-radius: 18px;
+      background: linear-gradient(135deg, rgba(109, 93, 252, .16), rgba(34, 211, 238, .08)), var(--card);
+      text-align: center;
+    }
+    .final h2 { margin-bottom: 8px; }
+    .final p { margin: 0; color: var(--muted); }
+    .final .cta { margin-top: 24px; }
+    .fine { margin-top: 18px !important; font-size: 14px; }
+
+    footer {
+      padding: 24px 0 40px;
+      border-top: 1px solid var(--stroke);
+      color: var(--muted);
+      font-size: 14px;
+    }
+    footer .wrap {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    footer a { color: var(--muted); }
+    footer a:hover { color: var(--text); }
+
+    @media (prefers-reduced-motion: reduce) {
+      .btn, .btn:hover { transition: none; transform: none; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <a class="brand" href="./">
+        <img src="favicon.png" alt="" width="30" height="30">
+        OpenMemoryOptimizer
+      </a>
+      <a class="nav-link" href="https://github.com/luciancaetano/open-memory-optimizer">GitHub</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero wrap">
+      <img class="logo" src="icon.png" alt="OpenMemoryOptimizer icon" width="96" height="96">
+      <h1>Free up memory on Windows<br><span class="grad">in one click.</span></h1>
+      <p class="lead">
+        OpenMemoryOptimizer is a small, free memory optimizer for Windows.
+        It is written in Rust and fully open source.
+      </p>
+      <ul class="tags">
+        <li><b>Rust</b> native</li>
+        <li><b>Open source</b> · GPL-3.0</li>
+        <li><b>Windows</b> 10 &amp; 11</li>
+      </ul>
+      <div class="cta">
+        <a class="btn btn-primary" href="https://github.com/luciancaetano/open-memory-optimizer/releases/latest">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+          <span class="dl-label">Download latest release</span>
+        </a>
+        <a class="btn btn-ghost" href="https://github.com/luciancaetano/open-memory-optimizer">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.52-1.33-1.28-1.69-1.28-1.69-1.05-.71.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.78 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.42-2.69 5.39-5.26 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5Z"/></svg>
+          View source
+        </a>
+      </div>
+      <p class="release-info" id="release-info">Free · No ads · No account</p>
+    </section>
+
+    <section class="shot wrap">
+      <img src="screenshot.webp" alt="The OpenMemoryOptimizer window showing memory usage and the result of a cleanup" width="1000" height="750">
+    </section>
+
+    <section class="wrap">
+      <h2>Why OpenMemoryOptimizer</h2>
+      <div class="pillars">
+        <article class="card">
+          <h3>
+            <span class="icon amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg></span>
+            Fast and light
+          </h3>
+          <p>Built in Rust as a single native app. No runtime to install, starts instantly and barely uses your processor while it waits in the tray.</p>
+        </article>
+        <article class="card">
+          <h3>
+            <span class="icon green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg></span>
+            Safe
+          </h3>
+          <p>Rust prevents whole classes of memory bugs. The app has no ads and no tracking, and it never connects to the internet. It only uses the cleanup tools Windows already provides.</p>
+        </article>
+        <article class="card">
+          <h3>
+            <span class="icon cyan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m8 7-5 5 5 5"/><path d="m16 7 5 5-5 5"/></svg></span>
+            Open source
+          </h3>
+          <p>Every line of code is public under the GPL-3.0 license. Read it, build it yourself, or check each download against the published checksums.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="features wrap">
+      <h2>What it does</h2>
+      <ul>
+        <li>Live view of your memory usage</li>
+        <li>One-click cleanup</li>
+        <li>Automatic cleanup when memory runs low or on a timer</li>
+        <li>Scheduled cleanups: daily, weekly or at sign-in</li>
+        <li>Runs quietly in the system tray</li>
+        <li>Installer or portable zip, your choice</li>
+      </ul>
+    </section>
+
+    <section class="wrap">
+      <div class="final">
+        <h2>Get OpenMemoryOptimizer</h2>
+        <p>Free for Windows 10 and 11 (64-bit).</p>
+        <div class="cta">
+          <a class="btn btn-primary" href="https://github.com/luciancaetano/open-memory-optimizer/releases/latest">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+            <span class="dl-label">Download latest release</span>
+          </a>
+        </div>
+        <p class="fine">
+          Download <code>OpenMemoryOptimizer-Setup-&lt;version&gt;.exe</code> under <b>Assets</b>.
+          The app is not code-signed yet: if Windows says "Windows protected your PC",
+          click <b>More info → Run anyway</b>.
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <span>© 2026 Lucian Caetano · <a href="https://github.com/luciancaetano/open-memory-optimizer/blob/main/LICENSE">GPL-3.0-or-later</a></span>
+      <span><a href="https://github.com/luciancaetano/open-memory-optimizer/releases">All releases</a> · <a href="https://github.com/luciancaetano/open-memory-optimizer/issues">Report a problem</a></span>
+    </div>
+  </footer>
+
+  <script>
+    // Show the latest version on the download buttons. The links work without this.
+    fetch("https://api.github.com/repos/luciancaetano/open-memory-optimizer/releases/latest")
+      .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+      .then(function (rel) {
+        var tag = rel.tag_name;
+        if (!tag) return;
+        document.querySelectorAll(".dl-label").forEach(function (el) {
+          el.textContent = "Download " + tag;
+        });
+        var date = new Date(rel.published_at).toLocaleDateString("en", { year: "numeric", month: "short", day: "numeric" });
+        document.getElementById("release-info").textContent = "Latest release " + tag + " · " + date + " · Free, no ads, no account";
+      })
+      .catch(function () {});
+  </script>
+</body>
+</html>
