@@ -24,6 +24,9 @@ faithful to them unless a change is a deliberate, documented divergence. Existin
   `PROCESS_ALL_ACCESS`, and always skip anti-cheat processes (`process::is_anti_cheat`). Nothing may
   ask a game for memory, thread, handle-duplication, suspend or terminate rights: the test
   `booster::tests::never_asks_for_rights_that_touch_a_game` enforces it for every access mask.
+- The Disk page (`disk/`, `gui/disk_page.rs`) does not exist in the original. Its analyzer is read
+  only: the only action on a folder or file is opening it in File Explorer (`disk::reveal`). Never
+  add a delete action there.
 
 Licensed GPL-3.0-or-later. Every source file (including `build.rs`) starts with the GNU license notice.
 Add it to new source files.
@@ -111,8 +114,9 @@ creates the tag with the release and fails if the tag already exists. The About 
   `SchedHour`, `SchedMinute`, `SchedWeekday`, `SchedMonthDay`, and `Language` (`auto`, `en`, `pt-BR`;
   `auto` follows the Windows display language), and the Game Booster choices `BoostPriority`,
   `BoostNoThrottle`, `BoostPowerPlan`, `BoostFreeMemory` (default 1) and `BoostBackground`,
-  `BoostPerfCores` (default 0). If neither `LowmemOpt` nor `periodOpt`
-  is set, `LowmemOpt` is forced on.
+  `BoostPerfCores` (default 0), and the Disk page choices `DiskDrive` (a letter) and
+  `DiskClean<key>` per `disk::clean::Category` (default 1, except the `careful()` ones).
+  If neither `LowmemOpt` nor `periodOpt` is set, `LowmemOpt` is forced on.
 - `i18n.rs` holds every GUI string, one `Strings` table per language (`EN`, `PT_BR`), so a missing
   translation does not compile. Texts with values are `fn` fields (`(t.freed)(&size)`). `tr()` returns
   the current table; `i18n::set` switches it. `Strings::size`/`decimal` format numbers with the
@@ -139,6 +143,30 @@ creates the tag with the release and fails if the tag already exists. The About 
   CPUs, and the game is skipped by trims while boosted.
 - `schedule.rs` builds the `schtasks /create ... /RL HIGHEST` command. The task runs
   `OpenMemoryOptimizer.exe --optimize`.
+- `disk/` is the Disk page:
+  - `volume.rs` lists the drives with a letter. SSD or hard disk comes from
+    `IOCTL_STORAGE_QUERY_PROPERTY` (seek penalty).
+  - `scan.rs` is the analyzer. It lists folders in parallel with `NtQueryDirectoryFile`
+    (`FileDirectoryInformation`), so it gets allocation sizes without opening files and never
+    downloads cloud placeholders. It does not follow reparse points. It keeps one `Node` per
+    folder, the `TOP_FILES` biggest files and a total per `FileKind`.
+  - `clean.rs` measures, then cleans, each `Category`. Our own folders (`Source::Files`) follow
+    these rules (tests enforce them):
+    - `safe_root`: at least two levels deep, never a protected folder or a folder above one.
+    - Never through a junction or link; the folder itself stays.
+    - Minimum file age (one day for temp folders).
+    - Files in use are skipped.
+    - A browser's cache is left alone while that browser runs.
+
+    Windows' own parts go through the Disk Cleanup handlers (`volcache.rs`: `IEmptyVolumeCache2`
+    vtables written by hand from `emptyvc.h`). Only the handler names listed in
+    `Category::source` are loaded. The Recycle Bin uses `SHEmptyRecycleBinW`. Freed space is what
+    was really removed.
+  - `optimize.rs` only runs Windows tools: `defrag X: /O` (TRIM or defragmentation, Windows
+    picks), `fsutil` (TRIM notifications), `powercfg /h` and `DISM /StartComponentCleanup`, never
+    `/ResetBase`.
+  - Manual checks on the real system drive (ignored tests, read only):
+    `cargo test --lib scan_system_drive -- --ignored --nocapture` and `measure_system_drive`.
 
 **GUI (`src/gui/`)**: the single binary `OpenMemoryOptimizer`.
 - `main.rs`: `main()` handles `--optimize` first: it does one silent manual pass with the saved
@@ -153,6 +181,10 @@ creates the tag with the release and fails if the tag already exists. The About 
   process once a second (`Event::GameStats`, tagged with a pick generation); boosting runs on a
   worker thread (`Event::Boosted`). When the game exits, the session is restored and a toast says so.
   The `booster_active` snapshot page uses this app's own process as the game.
+- `disk_page.rs` is the Disk page (an `impl App` block): drive tiles, then the Analyze, Clean up
+  and Optimize tabs. Scans, measuring, cleaning and Windows tools run on worker threads and report
+  through `Event::Disk`. The drive cannot be changed while one runs. The snapshot pages
+  `disk_analyze`, `disk_clean` and `disk_optimize` load made-up results (`load_disk_fixture`).
 - eframe 0.37 replaced `update` with `App::ui` plus `App::logic`. Only `logic` runs while the window
   is hidden in the tray (after `request_repaint`). Event handling and the "minimized → hide to tray"
   detection therefore live in `logic`. Tray restore uses `ViewportCommand::Visible/Minimized/Focus`.

@@ -100,6 +100,17 @@ pub mod icons {
     pub const GAME: &str = "\u{E7FC}";
     pub const REFRESH: &str = "\u{E72C}";
     pub const UNDO: &str = "\u{E7A7}";
+    pub const DRIVE: &str = "\u{EDA2}";
+    pub const USB: &str = "\u{E88E}";
+    pub const NETWORK_DRIVE: &str = "\u{E8CE}";
+    pub const FOLDER: &str = "\u{E8B7}";
+    pub const OPEN_FOLDER: &str = "\u{E838}";
+    pub const DOCUMENT: &str = "\u{E8A5}";
+    pub const CHEVRON_RIGHT: &str = "\u{E76C}";
+    pub const CHEVRON_DOWN: &str = "\u{E70D}";
+    pub const SEARCH: &str = "\u{E721}";
+    pub const BROOM: &str = "\u{EA99}";
+    pub const SPEED: &str = "\u{EC4A}";
 }
 
 fn load_system_font(fonts: &mut FontDefinitions, name: &str, files: &[&str]) -> bool {

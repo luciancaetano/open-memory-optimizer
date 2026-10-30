@@ -328,9 +328,130 @@ pub struct Strings {
     /// Game name.
     pub boost_exited_body: fn(&str) -> String,
 
+    // Disk: drive picker and tabs
+    pub nav_disk: &'static str,
+    pub disk_sub: &'static str,
+    pub disk_local: &'static str,
+    /// Free, total.
+    pub disk_free_of: fn(&str, &str) -> String,
+    pub media_ssd: &'static str,
+    pub media_hdd: &'static str,
+    pub media_removable: &'static str,
+    pub media_network: &'static str,
+    pub disk_refresh: &'static str,
+    pub tab_analyze: &'static str,
+    pub tab_clean: &'static str,
+    pub tab_optimize: &'static str,
+    /// A whole number with this language's thousands separator.
+    pub count: fn(u64) -> String,
+
+    // Disk: analyze
+    pub analyze_button: &'static str,
+    pub analyze_again: &'static str,
+    pub analyze_empty_title: &'static str,
+    pub analyze_empty_body: &'static str,
+    pub analyze_reading: &'static str,
+    /// Files (already formatted), size.
+    pub analyze_progress: fn(&str, &str) -> String,
+    /// Files, folders (already formatted), seconds.
+    pub analyze_summary: fn(&str, &str, f64) -> String,
+    pub analyze_stopped: &'static str,
+    /// Size not found in any folder.
+    pub analyze_unread: fn(&str) -> String,
+    pub analyze_read_only: &'static str,
+    pub analyze_used: &'static str,
+    pub view_folders: &'static str,
+    pub view_files: &'static str,
+    pub view_types: &'static str,
+    pub open_folder: &'static str,
+    pub show_in_folder: &'static str,
+    /// Number of files, already formatted.
+    pub files_count: fn(&str) -> String,
+    /// Number of smaller folders not listed.
+    pub more_items: fn(usize) -> String,
+    /// In `disk::scan::FileKind::ALL` order.
+    pub kinds: [&'static str; 7],
+
+    // Disk: clean up
+    pub clean_title: &'static str,
+    pub clean_sub: &'static str,
+    pub clean_check: &'static str,
+    pub clean_checking: &'static str,
+    pub clean_cleaning: &'static str,
+    /// Size to free.
+    pub clean_button: fn(&str) -> String,
+    pub clean_nothing_selected: &'static str,
+    /// Size that can be freed.
+    pub clean_total: fn(&str) -> String,
+    pub clean_total_sub: &'static str,
+    /// In `disk::clean::Category::ALL` order.
+    pub cat_titles: [&'static str; crate::disk::clean::COUNT],
+    pub cat_descs: [&'static str; crate::disk::clean::COUNT],
+    pub cat_careful: &'static str,
+    pub cat_none: &'static str,
+    /// Browser name.
+    pub cat_blocked: fn(&str) -> String,
+    pub cat_unavailable: &'static str,
+    pub cat_failed: &'static str,
+    /// Size removed.
+    pub cat_removed: fn(&str) -> String,
+    /// Number of files in use (already formatted).
+    pub cat_in_use: fn(&str) -> String,
+    /// Letter of the Windows drive.
+    pub clean_only_bin: fn(char) -> String,
+    /// Size freed.
+    pub clean_done: fn(&str) -> String,
+    /// Free space before, after.
+    pub clean_done_body: fn(&str, &str) -> String,
+    pub clean_nothing: &'static str,
+    pub clean_nothing_body: &'static str,
+    pub clean_stopped: &'static str,
+    pub clean_warning: &'static str,
+
+    // Disk: optimize
+    pub optimize_sub: &'static str,
+    pub opt_drive_title: &'static str,
+    pub opt_drive_ssd: &'static str,
+    pub opt_drive_hdd: &'static str,
+    pub opt_drive_unknown: &'static str,
+    pub opt_drive_button: &'static str,
+    pub opt_trim_title: &'static str,
+    pub opt_trim_on: &'static str,
+    pub opt_trim_off: &'static str,
+    pub opt_trim_unknown: &'static str,
+    pub opt_trim_button: &'static str,
+    pub opt_hiber_title: &'static str,
+    /// Size of the hibernate file.
+    pub opt_hiber_desc: fn(&str) -> String,
+    pub opt_hiber_none: &'static str,
+    pub opt_hiber_smaller: &'static str,
+    pub opt_hiber_disable: &'static str,
+    pub opt_hiber_note: &'static str,
+    pub opt_components_title: &'static str,
+    pub opt_components_desc: &'static str,
+    pub opt_components_button: &'static str,
+    pub opt_working: &'static str,
+    pub opt_done: &'static str,
+    pub opt_failed: &'static str,
+    pub opt_stopped: &'static str,
+    pub opt_not_supported: &'static str,
+
     // Tray menu
     pub tray_open: &'static str,
     pub tray_exit: &'static str,
+}
+
+/// `n` with `sep` between groups of three digits: 1234567 -> "1,234,567".
+fn grouped(n: u64, sep: char) -> String {
+    let digits = n.to_string();
+    let mut out = String::with_capacity(digits.len() + digits.len() / 3);
+    for (i, c) in digits.chars().enumerate() {
+        if i > 0 && (digits.len() - i).is_multiple_of(3) {
+            out.push(sep);
+        }
+        out.push(c);
+    }
+    out
 }
 
 fn duration_text(secs: u64) -> String {
@@ -578,6 +699,142 @@ pub static EN: Strings = Strings {
     boost_restored_body: "All Game Booster changes were undone.",
     boost_exited_body: |name| format!("{name} closed, so all Game Booster changes were undone."),
 
+    nav_disk: "Disk",
+    disk_sub: "See what fills your drives and free up space",
+    disk_local: "Local Disk",
+    disk_free_of: |free, total| format!("{free} free of {total}"),
+    media_ssd: "SSD",
+    media_hdd: "Hard disk",
+    media_removable: "Removable",
+    media_network: "Network",
+    disk_refresh: "Refresh drives",
+    tab_analyze: "Analyze",
+    tab_clean: "Clean up",
+    tab_optimize: "Optimize",
+    count: |n| grouped(n, ','),
+
+    analyze_button: "Analyze drive",
+    analyze_again: "Analyze again",
+    analyze_empty_title: "Find out what takes up space",
+    analyze_empty_body: "Looks through the whole drive and lists the biggest folders and files. \
+                         Nothing is changed or deleted: you can only open the folders.",
+    analyze_reading: "Reading the drive…",
+    analyze_progress: |files, size| format!("{files} files · {size}"),
+    analyze_summary: |files, folders, secs| {
+        format!("{files} files in {folders} folders · {}", duration_text(secs.round() as u64))
+    },
+    analyze_stopped: "Stopped early: showing what was found so far.",
+    analyze_unread: |size| format!("{size} is used by Windows itself or by folders that could not be opened."),
+    analyze_read_only: "Read only: nothing is changed or deleted here.",
+    analyze_used: "used",
+    view_folders: "Biggest folders",
+    view_files: "Biggest files",
+    view_types: "By type",
+    open_folder: "Open folder",
+    show_in_folder: "Show in folder",
+    files_count: |n| format!("{n} files"),
+    more_items: |n| format!("…and {n} smaller folders"),
+    kinds: [
+        "Videos",
+        "Music",
+        "Pictures",
+        "Documents",
+        "Archives and disk images",
+        "Programs and game data",
+        "Other",
+    ],
+
+    clean_title: "What can be removed",
+    clean_sub: "Only files that are safe to remove. Windows and your apps make them again when needed.",
+    clean_check: "Check again",
+    clean_checking: "Checking…",
+    clean_cleaning: "Cleaning…",
+    clean_button: |size| format!("Clean up {size}"),
+    clean_nothing_selected: "Choose what to clean",
+    clean_total: |size| format!("{size} can be freed"),
+    clean_total_sub: "In the items you chose",
+    cat_titles: [
+        "Your temporary files",
+        "Windows temporary files",
+        "Browser cache",
+        "App crash reports",
+        "Windows Update leftovers",
+        "Update downloads",
+        "Windows error reports",
+        "Picture previews",
+        "System crash files",
+        "Setup and upgrade records",
+        "Game graphics cache",
+        "Recycle Bin",
+        "Previous Windows installation",
+        "Old device drivers",
+    ],
+    cat_descs: [
+        "Leftovers that apps saved for a moment and did not remove. Only files older than one day.",
+        "Leftovers from Windows and installers. Only files older than one day.",
+        "Copies of web pages and pictures kept to open sites faster. History, passwords and \
+         sign-ins are kept.",
+        "Files that apps saved when they closed unexpectedly.",
+        "Old copies of system files that updates replaced.",
+        "Updates Windows already installed and kept to share. Windows can download them again.",
+        "Problem reports that were already sent or are no longer needed.",
+        "Small previews of photos and videos. File Explorer makes them again when needed.",
+        "Memory copies Windows saved after a blue screen.",
+        "Records from installing or upgrading Windows.",
+        "Graphics prepared ahead of time for games. A game may stutter for a moment the first \
+         time while it makes them again.",
+        "Files you deleted on this drive. They cannot be brought back after this.",
+        "Lets you go back to the Windows version you had before. After this you cannot go back.",
+        "Older versions of the drivers of your devices. After this you cannot roll a driver back.",
+    ],
+    cat_careful: "Check first",
+    cat_none: "Nothing to remove",
+    cat_blocked: |app| format!("Close {app} to clean its cache"),
+    cat_unavailable: "Not on this computer",
+    cat_failed: "Windows did not allow it",
+    cat_removed: |size| format!("{size} removed"),
+    cat_in_use: |n| format!("{n} in use, left in place"),
+    clean_only_bin: |letter| {
+        format!(
+            "Junk files from Windows and apps are on the Windows drive ({letter}:). \
+             On this drive only the Recycle Bin can be emptied."
+        )
+    },
+    clean_done: |size| format!("Freed {size} of disk space"),
+    clean_done_body: |before, after| format!("Free space went from {before} to {after}."),
+    clean_nothing: "Nothing was removed",
+    clean_nothing_body: "The files were in use or already gone.",
+    clean_stopped: "Cleanup stopped",
+    clean_warning: "Items marked Check first cannot be undone.",
+
+    optimize_sub: "Uses the tools built into Windows",
+    opt_drive_title: "Optimize drive",
+    opt_drive_ssd: "Tells the SSD which space is free (TRIM), so it stays fast. Safe to run at any time.",
+    opt_drive_hdd: "Puts the pieces of each file back together, so the hard disk reads them faster. \
+                    It can take a while; you can keep working.",
+    opt_drive_unknown: "Windows picks the right job for this drive.",
+    opt_drive_button: "Optimize",
+    opt_trim_title: "Free-space notices for SSDs (TRIM)",
+    opt_trim_on: "On: Windows tells SSDs when space is freed.",
+    opt_trim_off: "Off: turning it on keeps SSDs fast.",
+    opt_trim_unknown: "Could not be checked.",
+    opt_trim_button: "Turn on",
+    opt_hiber_title: "Hibernate file",
+    opt_hiber_desc: |size| format!("Windows keeps {size} on this drive for Hibernate and Fast Startup."),
+    opt_hiber_none: "Hibernate is off, so no space is kept for it.",
+    opt_hiber_smaller: "Make smaller",
+    opt_hiber_disable: "Turn off",
+    opt_hiber_note: "Make smaller keeps Fast Startup. Turn off also removes Hibernate and Fast Startup.",
+    opt_components_title: "Old Windows parts",
+    opt_components_desc: "Removes old versions of Windows parts that updates replaced. It takes several \
+                          minutes and cannot be stopped once it starts. Updates can still be removed later.",
+    opt_components_button: "Clean up",
+    opt_working: "Working…",
+    opt_done: "Done",
+    opt_failed: "Windows could not finish it",
+    opt_stopped: "Stopped",
+    opt_not_supported: "Network drives can only be analyzed.",
+
     tray_open: "Open OpenMemoryOptimizer",
     tray_exit: "Exit",
 };
@@ -804,6 +1061,143 @@ pub static PT_BR: Strings = Strings {
     boost_restored_body: "Todas as mudanças do Game Booster foram desfeitas.",
     boost_exited_body: |name| format!("{name} fechou, então todas as mudanças do Game Booster foram desfeitas."),
 
+    nav_disk: "Disco",
+    disk_sub: "Veja o que ocupa seus discos e libere espaço",
+    disk_local: "Disco Local",
+    disk_free_of: |free, total| format!("{free} livres de {total}"),
+    media_ssd: "SSD",
+    media_hdd: "HD",
+    media_removable: "Removível",
+    media_network: "Rede",
+    disk_refresh: "Atualizar discos",
+    tab_analyze: "Analisar",
+    tab_clean: "Limpar",
+    tab_optimize: "Otimizar",
+    count: |n| grouped(n, '.'),
+
+    analyze_button: "Analisar disco",
+    analyze_again: "Analisar de novo",
+    analyze_empty_title: "Descubra o que ocupa espaço",
+    analyze_empty_body: "Percorre o disco inteiro e lista as maiores pastas e arquivos. \
+                         Nada é alterado nem apagado: você só pode abrir as pastas.",
+    analyze_reading: "Lendo o disco…",
+    analyze_progress: |files, size| format!("{files} arquivos · {size}"),
+    analyze_summary: |files, folders, secs| {
+        format!("{files} arquivos em {folders} pastas · {}", duration_text(secs.round() as u64))
+    },
+    analyze_stopped: "Parado antes do fim: mostrando o que foi encontrado até agora.",
+    analyze_unread: |size| format!("{size} são usados pelo próprio Windows ou por pastas que não puderam ser abertas."),
+    analyze_read_only: "Somente leitura: nada é alterado nem apagado aqui.",
+    analyze_used: "usados",
+    view_folders: "Maiores pastas",
+    view_files: "Maiores arquivos",
+    view_types: "Por tipo",
+    open_folder: "Abrir pasta",
+    show_in_folder: "Mostrar na pasta",
+    files_count: |n| format!("{n} arquivos"),
+    more_items: |n| format!("…e mais {n} pastas menores"),
+    kinds: [
+        "Vídeos",
+        "Músicas",
+        "Imagens",
+        "Documentos",
+        "Compactados e imagens de disco",
+        "Programas e dados de jogos",
+        "Outros",
+    ],
+
+    clean_title: "O que pode ser removido",
+    clean_sub: "Só arquivos que podem ser removidos com segurança. O Windows e seus aplicativos os criam de novo quando precisam.",
+    clean_check: "Verificar de novo",
+    clean_checking: "Verificando…",
+    clean_cleaning: "Limpando…",
+    clean_button: |size| format!("Limpar {size}"),
+    clean_nothing_selected: "Escolha o que limpar",
+    clean_total: |size| format!("{size} podem ser liberados"),
+    clean_total_sub: "Nos itens que você escolheu",
+    cat_titles: [
+        "Seus arquivos temporários",
+        "Arquivos temporários do Windows",
+        "Cache dos navegadores",
+        "Relatórios de falha de aplicativos",
+        "Sobras do Windows Update",
+        "Downloads de atualizações",
+        "Relatórios de erro do Windows",
+        "Miniaturas de imagens",
+        "Arquivos de falha do sistema",
+        "Registros de instalação e atualização",
+        "Cache de gráficos dos jogos",
+        "Lixeira",
+        "Instalação anterior do Windows",
+        "Drivers antigos",
+    ],
+    cat_descs: [
+        "Sobras que os aplicativos guardaram por um momento e não apagaram. Só arquivos com mais de um dia.",
+        "Sobras do Windows e de instaladores. Só arquivos com mais de um dia.",
+        "Cópias de páginas e imagens guardadas para abrir sites mais rápido. Histórico, senhas e \
+         logins são mantidos.",
+        "Arquivos que os aplicativos salvaram quando fecharam de repente.",
+        "Cópias antigas de arquivos do sistema que as atualizações substituíram.",
+        "Atualizações que o Windows já instalou e guardou para compartilhar. Ele pode baixá-las de novo.",
+        "Relatórios de problemas já enviados ou que não são mais necessários.",
+        "Pequenas prévias de fotos e vídeos. O Explorador de Arquivos as cria de novo quando precisa.",
+        "Cópias da memória que o Windows salvou depois de uma tela azul.",
+        "Registros da instalação ou atualização do Windows.",
+        "Gráficos preparados com antecedência para os jogos. Um jogo pode travar um pouco na \
+         primeira vez enquanto os refaz.",
+        "Arquivos que você apagou neste disco. Depois disso, não dá para recuperá-los.",
+        "Permite voltar para a versão do Windows que você tinha antes. Depois disso, não dá para voltar.",
+        "Versões antigas dos drivers dos seus dispositivos. Depois disso, não dá para voltar um driver.",
+    ],
+    cat_careful: "Confira antes",
+    cat_none: "Nada para remover",
+    cat_blocked: |app| format!("Feche o {app} para limpar o cache dele"),
+    cat_unavailable: "Não existe neste computador",
+    cat_failed: "O Windows não permitiu",
+    cat_removed: |size| format!("{size} removidos"),
+    cat_in_use: |n| format!("{n} em uso, mantidos"),
+    clean_only_bin: |letter| {
+        format!(
+            "Os arquivos inúteis do Windows e dos aplicativos ficam no disco do Windows ({letter}:). \
+             Neste disco só dá para esvaziar a Lixeira."
+        )
+    },
+    clean_done: |size| format!("{size} de espaço liberados"),
+    clean_done_body: |before, after| format!("O espaço livre foi de {before} para {after}."),
+    clean_nothing: "Nada foi removido",
+    clean_nothing_body: "Os arquivos estavam em uso ou já tinham sido apagados.",
+    clean_stopped: "Limpeza interrompida",
+    clean_warning: "Itens marcados com Confira antes não podem ser desfeitos.",
+
+    optimize_sub: "Usa as ferramentas que já vêm no Windows",
+    opt_drive_title: "Otimizar disco",
+    opt_drive_ssd: "Avisa o SSD sobre o espaço livre (TRIM) para ele continuar rápido. Pode ser usado a qualquer hora.",
+    opt_drive_hdd: "Junta os pedaços de cada arquivo para o HD lê-los mais rápido. Pode demorar; \
+                    você pode continuar usando o computador.",
+    opt_drive_unknown: "O Windows escolhe o trabalho certo para este disco.",
+    opt_drive_button: "Otimizar",
+    opt_trim_title: "Avisos de espaço livre para SSDs (TRIM)",
+    opt_trim_on: "Ativado: o Windows avisa os SSDs quando o espaço é liberado.",
+    opt_trim_off: "Desativado: ativar mantém os SSDs rápidos.",
+    opt_trim_unknown: "Não foi possível verificar.",
+    opt_trim_button: "Ativar",
+    opt_hiber_title: "Arquivo de hibernação",
+    opt_hiber_desc: |size| format!("O Windows reserva {size} neste disco para a Hibernação e a Inicialização Rápida."),
+    opt_hiber_none: "A hibernação está desativada, então nenhum espaço é reservado para ela.",
+    opt_hiber_smaller: "Reduzir",
+    opt_hiber_disable: "Desativar",
+    opt_hiber_note: "Reduzir mantém a Inicialização Rápida. Desativar remove a Hibernação e a Inicialização Rápida.",
+    opt_components_title: "Partes antigas do Windows",
+    opt_components_desc: "Remove versões antigas de partes do Windows que as atualizações substituíram. Leva \
+                          vários minutos e não pode ser interrompido depois de começar. As atualizações ainda \
+                          podem ser removidas depois.",
+    opt_components_button: "Limpar",
+    opt_working: "Trabalhando…",
+    opt_done: "Concluído",
+    opt_failed: "O Windows não conseguiu terminar",
+    opt_stopped: "Interrompido",
+    opt_not_supported: "Discos de rede só podem ser analisados.",
+
     tray_open: "Abrir o OpenMemoryOptimizer",
     tray_exit: "Sair",
 };
@@ -856,6 +1250,24 @@ mod tests {
             assert!((t.outcome_boost_calmed)(12).contains("12"));
             assert!((t.boost_exited_body)("My Game").contains("My Game"));
             assert_eq!(t.nav_booster, "Game Booster");
+        }
+    }
+
+    #[test]
+    fn disk_texts() {
+        assert_eq!((EN.count)(1_234_567), "1,234,567");
+        assert_eq!((PT_BR.count)(1_234_567), "1.234.567");
+        assert_eq!((EN.count)(999), "999");
+        assert_eq!((EN.count)(0), "0");
+        for t in [&EN, &PT_BR] {
+            assert!((t.clean_only_bin)('C').contains("C:"));
+            assert!((t.cat_blocked)("Firefox").contains("Firefox"));
+            assert!((t.analyze_summary)("10", "2", 75.0).contains("1 min"));
+            assert!(t
+                .cat_titles
+                .iter()
+                .chain(&t.cat_descs)
+                .all(|s| !s.is_empty()));
         }
     }
 

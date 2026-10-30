@@ -20,6 +20,7 @@
 use std::path::Path;
 
 use crate::booster;
+use crate::disk::clean::{self, Category};
 use crate::i18n::Lang;
 
 pub const SECTION: &str = "MemoryOptimizer";
@@ -60,6 +61,10 @@ pub struct Settings {
     /// Game Booster choices: BoostPriority, BoostNoThrottle, BoostPowerPlan,
     /// BoostBackground, BoostFreeMemory and BoostPerfCores. Not in the original.
     pub booster: booster::Options,
+    /// Disk page: the chosen drive (`DiskDrive`, a letter) and the cleanup categories
+    /// (`DiskClean<key>`, one per `clean::Category`). Not in the original.
+    pub disk_drive: Option<char>,
+    pub disk_clean: [bool; clean::COUNT],
 }
 
 /// Schedule page fields: SchedKind (0 daily, 1 weekly, 2 monthly, 3 idle, 4 sign-in),
@@ -138,6 +143,12 @@ impl Settings {
                 free_memory: boolean("BoostFreeMemory", boost.free_memory),
                 performance_cores: boolean("BoostPerfCores", boost.performance_cores),
             },
+            disk_drive: get("DiskDrive")
+                .and_then(|v| v.trim().chars().next())
+                .filter(char::is_ascii_alphabetic)
+                .map(|c| c.to_ascii_uppercase()),
+            disk_clean: Category::ALL
+                .map(|c| boolean(&format!("DiskClean{}", c.key()), c.default_on())),
         };
         if !(0..=100).contains(&s.low_mem_percent) {
             s.low_mem_percent = 30;
@@ -167,7 +178,7 @@ impl Settings {
 
     pub fn to_ini(&self) -> String {
         let b = |v: bool| if v { "1" } else { "0" };
-        format!(
+        let mut ini = format!(
             "[{SECTION}]\r\nAutoOpt={}\r\nLowmemOpt={}\r\nIdle={}\r\nLowMem={}\r\nperiodOpt={}\r\nperiodMinute={}\r\nClearBoard={}\r\nShowNotice={}\r\nDefragMem={}\r\nClearStandy={}\r\nMinToTray={}\r\nTrimWorkingSets={}\r\nSchedKind={}\r\nSchedHour={}\r\nSchedMinute={}\r\nSchedWeekday={}\r\nSchedMonthDay={}\r\nLanguage={}\r\nBoostPriority={}\r\nBoostNoThrottle={}\r\nBoostPowerPlan={}\r\nBoostBackground={}\r\nBoostFreeMemory={}\r\nBoostPerfCores={}\r\n",
             b(self.auto_opt),
             b(self.lowmem_opt),
@@ -193,7 +204,18 @@ impl Settings {
             b(self.booster.calm_background),
             b(self.booster.free_memory),
             b(self.booster.performance_cores),
-        )
+        );
+        if let Some(d) = self.disk_drive {
+            ini.push_str(&format!("DiskDrive={d}\r\n"));
+        }
+        for c in Category::ALL {
+            ini.push_str(&format!(
+                "DiskClean{}={}\r\n",
+                c.key(),
+                b(self.disk_clean[c.index()])
+            ));
+        }
+        ini
     }
 
     pub fn save(&self, path: &Path) -> std::io::Result<()> {
@@ -267,6 +289,8 @@ mod tests {
                 performance_cores: true,
                 ..booster::Options::default()
             },
+            disk_drive: Some('D'),
+            disk_clean: Category::ALL.map(|c| c.index() % 2 == 0),
             ..Settings::default()
         };
         assert_eq!(Settings::parse(&s.to_ini()), s);
@@ -280,6 +304,22 @@ mod tests {
         assert_eq!(s.schedule, ScheduleForm::default());
         assert_eq!(s.language, None);
         assert_eq!(s.booster, booster::Options::default());
+        assert_eq!(s.disk_drive, None);
+        assert_eq!(s.disk_clean, Category::ALL.map(Category::default_on));
+    }
+
+    #[test]
+    fn disk_keys() {
+        let s = Settings::parse(
+            "[MemoryOptimizer]\nDiskDrive=e\nDiskCleanRecycleBin=1\nDiskCleanUserTemp=0\n",
+        );
+        assert_eq!(s.disk_drive, Some('E'));
+        assert!(s.disk_clean[Category::RecycleBin.index()]);
+        assert!(!s.disk_clean[Category::UserTemp.index()]);
+        assert_eq!(
+            Settings::parse("[MemoryOptimizer]\nDiskDrive=?\n").disk_drive,
+            None
+        );
     }
 
     #[test]

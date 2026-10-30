@@ -17,6 +17,7 @@
 pub mod auto;
 pub mod booster;
 pub mod cpu;
+pub mod disk;
 pub mod i18n;
 pub mod instance;
 pub mod memory;

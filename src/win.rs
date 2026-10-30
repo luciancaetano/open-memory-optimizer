@@ -64,7 +64,9 @@ pub fn resolve(dll: &str, name: &str) -> Option<*const c_void> {
 pub fn format_kb(kb: i64) -> String {
     let sign = if kb < 0 { "-" } else { "" };
     let kb = kb.unsigned_abs() as f64;
-    if kb >= 1024.0 * 1024.0 {
+    if kb >= 1024.0 * 1024.0 * 1024.0 {
+        format!("{sign}{:.2} TB", kb / (1024.0 * 1024.0 * 1024.0))
+    } else if kb >= 1024.0 * 1024.0 {
         format!("{sign}{:.2} GB", kb / (1024.0 * 1024.0))
     } else if kb >= 1024.0 {
         format!("{sign}{:.2} MB", kb / 1024.0)
@@ -88,5 +90,6 @@ mod tests {
         assert_eq!(format_kb(2048), "2.00 MB");
         assert_eq!(format_kb(3 * 1024 * 1024), "3.00 GB");
         assert_eq!(format_kb(-2048), "-2.00 MB");
+        assert_eq!(format_kb(3 * 1024 * 1024 * 1024 / 2), "1.50 TB");
     }
 }

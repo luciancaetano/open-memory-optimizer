@@ -18,6 +18,7 @@
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod disk_page;
 mod game_page;
 #[cfg(debug_assertions)]
 mod snapshot;
@@ -70,12 +71,15 @@ pub enum Event {
     Boosted(u32, Option<Box<Session>>),
     /// The picked game exited and was started again under this process.
     GameReturned(u64, ProcInfo),
+    /// Disk page worker messages.
+    Disk(disk_page::DiskMsg),
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Page {
     Dashboard,
     Booster,
+    Disk,
     Settings,
     Schedule,
     About,
@@ -437,20 +441,25 @@ struct App {
     sched_msg: Option<SchedMsg>,
 
     game: game_page::GamePage,
+    disk: disk_page::DiskPage,
 
     #[cfg(debug_assertions)]
     snap: Option<snapshot::Snap>,
 }
 
 #[cfg(debug_assertions)]
-const PAGES: [(Page, &str); 8] = [
+const PAGES: [(Page, &str); 12] = [
     (Page::Dashboard, "dashboard"),
     (Page::Booster, "booster"),
+    (Page::Disk, "disk"),
     (Page::Settings, "settings"),
     (Page::Schedule, "schedule"),
     (Page::About, "about"),
     (Page::Dashboard, "dashboard_result"),
     (Page::Booster, "booster_active"),
+    (Page::Disk, "disk_analyze"),
+    (Page::Disk, "disk_clean"),
+    (Page::Disk, "disk_optimize"),
     // Last: it leaves `running` set without a worker behind it.
     (Page::Dashboard, "dashboard_running"),
 ];
@@ -535,6 +544,7 @@ impl App {
             sched_busy: false,
             sched_msg: None,
             game: Default::default(),
+            disk: Default::default(),
             #[cfg(debug_assertions)]
             snap: snapshot::requested_dir()
                 .map(|d| snapshot::Snap::new(d, PAGES.iter().map(|(_, n)| *n).collect())),
@@ -712,6 +722,7 @@ impl App {
                 Event::GameStats(generation, s) => self.game_stats(generation, s),
                 Event::Boosted(pid, s) => self.game_boosted(pid, s),
                 Event::GameReturned(generation, p) => self.game_returned(generation, p),
+                Event::Disk(m) => self.disk_event(m),
             }
         }
     }
@@ -765,6 +776,7 @@ impl App {
         for (page, icon, text) in [
             (Page::Dashboard, icons::DASHBOARD, t.nav_overview),
             (Page::Booster, icons::GAME, t.nav_booster),
+            (Page::Disk, icons::DRIVE, t.nav_disk),
             (Page::Settings, icons::SETTINGS, t.nav_settings),
             (Page::Schedule, icons::CLOCK, t.nav_schedule),
             (Page::About, icons::INFO, t.nav_about),
@@ -1478,12 +1490,17 @@ impl App {
     /// avoids running a real optimization just to render the result card.
     #[cfg(debug_assertions)]
     fn load_snapshot_fixture(&mut self) {
-        let gb = 1024 * 1024;
+        // Ends at the memory available right now, so the toast matches the cards.
+        let freed = 1_288_490;
+        let after = self
+            .mem
+            .map_or(16 * 1024 * 1024, |m| (m.avail_phys / 1024) as i64);
+        let before = after - freed;
         self.last = Some(ResultView {
             mode: Mode::Manual,
-            freed_kb: 1_288_490,
-            before_kb: 15 * gb,
-            after_kb: 15 * gb + 1_288_490,
+            freed_kb: freed,
+            before_kb: before,
+            after_kb: after,
             elapsed: Duration::from_millis(3240),
             steps: vec![
                 (StepName::Clipboard, Outcome::Cleared, Level::Ok),
@@ -1495,8 +1512,8 @@ impl App {
             cancelled: false,
         });
         let t = tr();
-        let title = (t.freed)(&t.size(1_288_490));
-        let body = (t.available_change)(&t.size(15 * gb), &t.size(15 * gb + 1_288_490), 3.24);
+        let title = (t.freed)(&t.size(freed));
+        let body = (t.available_change)(&t.size(before), &t.size(after), 3.24);
         self.notify(&title, &body, Level::Ok);
     }
 
@@ -1625,6 +1642,7 @@ impl eframe::App for App {
             .show(ui, |ui| match self.page {
                 Page::Dashboard => self.dashboard(ui),
                 Page::Booster => self.game_page(ui),
+                Page::Disk => self.disk_page(ui),
                 Page::Settings => self.settings_page(ui),
                 Page::Schedule => self.schedule_page(ui),
                 Page::About => self.about_page(ui),
@@ -1641,6 +1659,10 @@ impl eframe::App for App {
                     if PAGES[i].1 == "booster_active" && !self.game.has_pick() {
                         self.toast = None;
                         self.load_game_fixture();
+                    }
+                    if PAGES[i].1.starts_with("disk_") {
+                        self.toast = None;
+                        self.load_disk_fixture(PAGES[i].1);
                     }
                     if PAGES[i].1 == "dashboard_running" && !self.running {
                         // The longest step text, to check that it stays inside the card.
