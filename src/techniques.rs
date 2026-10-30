@@ -77,7 +77,8 @@ pub struct DefragStats {
     pub committed: u32,
 }
 
-pub fn defrag_memory(blocks: u32) -> Option<DefragStats> {
+/// `stop` is polled before each block; blocks committed so far are still released.
+pub fn defrag_memory(blocks: u32, stop: &dyn Fn() -> bool) -> Option<DefragStats> {
     // The original guards re-entry with a global flag (0xda9b14).
     static BUSY: AtomicBool = AtomicBool::new(false);
     if BUSY.swap(true, Ordering::Acquire) {
@@ -90,6 +91,9 @@ pub fn defrag_memory(blocks: u32) -> Option<DefragStats> {
     // SetLength(blocks + 1), zero-initialised.
     let mut ptrs: Vec<*mut c_void> = vec![null_mut(); blocks as usize + 1];
     for slot in ptrs.iter_mut().take(blocks as usize) {
+        if stop() {
+            break;
+        }
         let p = unsafe {
             VirtualAlloc(
                 null(),
@@ -138,7 +142,8 @@ pub struct TrimStats {
     pub empty_ws_ok: u32,
 }
 
-pub fn trim_all_working_sets() -> std::io::Result<TrimStats> {
+/// `stop` is polled before each process.
+pub fn trim_all_working_sets(stop: &dyn Fn() -> bool) -> std::io::Result<TrimStats> {
     let snapshot = OwnedHandle::new(unsafe { CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) })
         .ok_or_else(std::io::Error::last_os_error)?;
     let empty_ws = empty_working_set_fn();
@@ -146,7 +151,7 @@ pub fn trim_all_working_sets() -> std::io::Result<TrimStats> {
     let mut entry: PROCESSENTRY32W = unsafe { std::mem::zeroed() };
     entry.dwSize = size_of::<PROCESSENTRY32W>() as u32; // 0x238, as in the original
     let mut more = unsafe { Process32FirstW(snapshot.0, &mut entry) } != 0;
-    while more {
+    while more && !stop() {
         stats.processes += 1;
         // bInheritHandle is TRUE in the original (edx = -1).
         let h = unsafe { OpenProcess(PROCESS_ALL_ACCESS, TRUE, entry.th32ProcessID) };
@@ -285,9 +290,18 @@ mod tests {
 
     #[test]
     fn defrag_small_run_commits_and_releases() {
-        let stats = defrag_memory(4).unwrap();
+        let stats = defrag_memory(4, &|| false).unwrap();
         assert_eq!(stats.requested, 4);
         assert_eq!(stats.committed, 4);
+
+        // Stopping after two blocks; same test because of the BUSY guard.
+        let polls = std::cell::Cell::new(0);
+        let stop = || {
+            polls.set(polls.get() + 1);
+            polls.get() > 2
+        };
+        let stats = defrag_memory(4, &stop).unwrap();
+        assert_eq!((stats.requested, stats.committed), (4, 2));
     }
 
     #[test]

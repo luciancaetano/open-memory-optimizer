@@ -65,6 +65,8 @@ pub struct Report {
     pub before_kb: i64,
     pub after_kb: i64,
     pub elapsed: Duration,
+    /// Stopped early by [`cancel`]; later steps were skipped.
+    pub cancelled: bool,
 }
 
 impl Report {
@@ -76,6 +78,21 @@ impl Report {
 }
 
 static RUNNING: AtomicBool = AtomicBool::new(false);
+static CANCEL: AtomicBool = AtomicBool::new(false);
+
+/// Asks the running pass to stop at the next safe point: between steps, between
+/// processes while trimming, or between blocks while deep cleaning. Memory that
+/// deep cleaning already took is still given back. Does nothing when idle.
+/// Not in the original, which cannot be stopped.
+pub fn cancel() {
+    if RUNNING.load(Ordering::Acquire) {
+        CANCEL.store(true, Ordering::Release);
+    }
+}
+
+fn cancelled() -> bool {
+    CANCEL.load(Ordering::Acquire)
+}
 
 fn avail_kb() -> i64 {
     memory::status()
@@ -88,10 +105,11 @@ pub fn run(mode: Mode, methods: Methods, log: &mut dyn FnMut(&str)) -> Option<Re
     if RUNNING.swap(true, Ordering::Acquire) {
         return None;
     }
+    CANCEL.store(false, Ordering::Release);
     let start = Instant::now();
     let mut r = Report::default();
 
-    if methods.clear_clipboard {
+    if methods.clear_clipboard && !cancelled() {
         log("Clearing clipboard");
         r.clipboard_cleared = Some(techniques::clear_clipboard());
     }
@@ -99,36 +117,44 @@ pub fn run(mode: Mode, methods: Methods, log: &mut dyn FnMut(&str)) -> Option<Re
     let before = memory::status().ok();
     r.before_kb = before.map(|s| memory::round_kb(s.avail_phys)).unwrap_or(0);
 
-    if mode == Mode::Manual && methods.defrag {
+    if mode == Mode::Manual && methods.defrag && !cancelled() {
         let blocks = techniques::defrag_block_count(before.map(|s| s.avail_phys).unwrap_or(0));
         log(&format!("Defragmenting memory: committing {blocks} x 1 MB"));
-        r.defrag = techniques::defrag_memory(blocks);
+        r.defrag = techniques::defrag_memory(blocks, &cancelled);
     }
-    if mode == Mode::Auto || methods.trim_working_sets {
+    if (mode == Mode::Auto || methods.trim_working_sets) && !cancelled() {
         log("Trimming working sets of all processes");
-        r.trim = Some(techniques::trim_all_working_sets());
+        r.trim = Some(techniques::trim_all_working_sets(&cancelled));
     }
-    if mode == Mode::Manual && methods.purge_standby {
+    if mode == Mode::Manual && methods.purge_standby && !cancelled() {
         log("Purging standby list");
         r.standby_status = Some(techniques::purge_standby_list());
     }
-    log("Trimming system file cache");
-    r.file_cache = Some(techniques::trim_file_cache());
+    if !cancelled() {
+        log("Trimming system file cache");
+        r.file_cache = Some(techniques::trim_file_cache());
+    }
 
-    // Let the memory manager settle: 3 x Sleep(1000).
-    for _ in 0..3 {
-        std::thread::sleep(Duration::from_millis(1000));
+    // Let the memory manager settle: 3 x Sleep(1000), in short slices so Stop
+    // answers quickly.
+    for _ in 0..30 {
+        if cancelled() {
+            break;
+        }
+        std::thread::sleep(Duration::from_millis(100));
     }
     r.after_kb = avail_kb();
 
     // Manual runs are padded to a minimum of 3 s (always true after the sleeps above).
-    if mode == Mode::Manual {
+    if mode == Mode::Manual && !cancelled() {
         let floor = Duration::from_millis(3000);
         if let Some(rest) = floor.checked_sub(start.elapsed()) {
             std::thread::sleep(rest);
         }
     }
     r.elapsed = start.elapsed();
+    r.cancelled = cancelled();
+    CANCEL.store(false, Ordering::Release);
     RUNNING.store(false, Ordering::Release);
     Some(r)
 }

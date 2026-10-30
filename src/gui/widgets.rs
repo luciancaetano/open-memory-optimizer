@@ -130,6 +130,27 @@ pub fn card_title(ui: &mut Ui, title: &str, subtitle: Option<&str>) {
     }
 }
 
+/// Single line of text cut with "…" so it never runs past `max_width`.
+pub fn fitted_text(
+    painter: &egui::Painter,
+    text: &str,
+    font: egui::FontId,
+    color: Color32,
+    max_width: f32,
+    max_rows: usize,
+) -> std::sync::Arc<egui::Galley> {
+    let mut job = egui::text::LayoutJob::simple(text.to_owned(), font, color, max_width.max(1.0));
+    job.wrap.max_rows = max_rows;
+    job.wrap.overflow_character = Some('…');
+    painter.layout_job(job)
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum PillStyle {
+    Primary,
+    Stop,
+}
+
 /// Filled pill button with glow; optional icon glyph and spinner.
 pub fn primary_button(
     ui: &mut Ui,
@@ -137,6 +158,28 @@ pub fn primary_button(
     text: &str,
     icon: Option<&str>,
     enabled: bool,
+) -> Response {
+    pill_button(ui, size, text, icon, enabled, PillStyle::Primary)
+}
+
+/// Quiet pill button that turns red on hover, for stopping a running task.
+pub fn stop_button(
+    ui: &mut Ui,
+    size: Vec2,
+    text: &str,
+    icon: Option<&str>,
+    enabled: bool,
+) -> Response {
+    pill_button(ui, size, text, icon, enabled, PillStyle::Stop)
+}
+
+fn pill_button(
+    ui: &mut Ui,
+    size: Vec2,
+    text: &str,
+    icon: Option<&str>,
+    enabled: bool,
+    style: PillStyle,
 ) -> Response {
     let sense = if enabled {
         Sense::click()
@@ -151,26 +194,47 @@ pub fn primary_button(
     let rect = if press { rect.shrink(1.0) } else { rect };
     let radius = CornerRadius::same((size.y / 2.0).min(255.0) as u8);
     let painter = ui.painter();
-    if enabled {
-        let glow = Shadow {
-            offset: [0, 6],
-            blur: 22,
-            spread: 0,
-            color: ACCENT.gamma_multiply(0.30 + 0.25 * hover),
-        };
-        painter.add(glow.as_shape(rect, radius));
-    }
-    let fill = if enabled {
-        lerp_color(ACCENT, ACCENT_HI, hover)
-    } else {
-        CARD_HI
+    let fg = match style {
+        PillStyle::Primary if enabled => {
+            let glow = Shadow {
+                offset: [0, 6],
+                blur: 22,
+                spread: 0,
+                color: ACCENT.gamma_multiply(0.30 + 0.25 * hover),
+            };
+            painter.add(glow.as_shape(rect, radius));
+            painter.rect_filled(rect, radius, lerp_color(ACCENT, ACCENT_HI, hover));
+            Color32::WHITE
+        }
+        PillStyle::Stop if enabled => {
+            let fill = lerp_color(CARD_HI, RED.gamma_multiply(0.22), hover);
+            let stroke = lerp_color(STROKE, RED.gamma_multiply(0.7), hover);
+            painter.rect(
+                rect,
+                radius,
+                fill,
+                Stroke::new(1.0, stroke),
+                egui::StrokeKind::Inside,
+            );
+            lerp_color(TEXT, RED, hover)
+        }
+        _ => {
+            painter.rect_filled(rect, radius, CARD_HI);
+            MUTED
+        }
     };
-    painter.rect_filled(rect, radius, fill);
-    let fg = if enabled { Color32::WHITE } else { MUTED };
-    let label = painter.layout_no_wrap(text.to_owned(), semibold(15.0), fg);
     let icon_g = icon.map(|i| painter.layout_no_wrap(i.to_owned(), theme::icon(15.0), fg));
     let gap = 9.0;
-    let total = label.size().x + icon_g.as_ref().map_or(0.0, |g| g.size().x + gap);
+    let icon_w = icon_g.as_ref().map_or(0.0, |g| g.size().x + gap);
+    let label = fitted_text(
+        painter,
+        text,
+        semibold(15.0),
+        fg,
+        rect.width() - 32.0 - icon_w,
+        1,
+    );
+    let total = label.size().x + icon_w;
     let mut x = rect.center().x - total / 2.0;
     if let Some(g) = icon_g {
         let y = rect.center().y - g.size().y / 2.0;

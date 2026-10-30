@@ -39,11 +39,12 @@ use egui_plot::{Line, Plot, PlotPoints};
 
 use open_memory_optimizer::auto::{AutoState, TICK};
 use open_memory_optimizer::cpu::CpuSampler;
+use open_memory_optimizer::instance::{self, Acquired, ShowRequests};
 use open_memory_optimizer::memory::{self, MemStatus};
 use open_memory_optimizer::optimizer::{self, Methods, Mode, Report};
 use open_memory_optimizer::privilege;
 use open_memory_optimizer::schedule::{self, Trigger};
-use open_memory_optimizer::settings::Settings;
+use open_memory_optimizer::settings::{ScheduleForm, Settings};
 use open_memory_optimizer::win::format_kb;
 
 use theme::{icons, *};
@@ -85,6 +86,28 @@ enum TriggerKind {
     Logon,
 }
 
+impl TriggerKind {
+    /// Order of `settings::ScheduleForm::kind`.
+    const ALL: [TriggerKind; 5] = [
+        TriggerKind::Daily,
+        TriggerKind::Weekly,
+        TriggerKind::Monthly,
+        TriggerKind::Idle,
+        TriggerKind::Logon,
+    ];
+
+    fn from_index(i: u8) -> Self {
+        Self::ALL
+            .get(i as usize)
+            .copied()
+            .unwrap_or(TriggerKind::Daily)
+    }
+
+    fn index(self) -> u8 {
+        Self::ALL.iter().position(|k| *k == self).unwrap_or(0) as u8
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Level {
     Ok,
@@ -100,6 +123,8 @@ pub struct ResultView {
     elapsed: Duration,
     steps: Vec<(&'static str, String, Level)>,
     at: chrono_lite::Clock,
+    /// Stopped with the Stop button before it finished.
+    cancelled: bool,
 }
 
 /// Wall-clock HH:MM without pulling a date/time crate.
@@ -188,6 +213,7 @@ impl ResultView {
             elapsed: r.elapsed,
             steps,
             at: chrono_lite::Clock::now(),
+            cancelled: r.cancelled,
         }
     }
 }
@@ -256,6 +282,15 @@ fn spawn_auto_timer(shared: Arc<Shared>) {
     });
 }
 
+/// Brings the window back when the app is launched again while already running.
+fn spawn_show_listener(shared: Arc<Shared>, requests: ShowRequests) {
+    std::thread::spawn(move || {
+        while requests.wait() {
+            shared.send(Event::Tray(tray::TrayMsg::Show));
+        }
+    });
+}
+
 struct Toast {
     title: String,
     body: String,
@@ -285,6 +320,8 @@ struct App {
     last_slow_sample: Option<Instant>,
 
     running: bool,
+    /// Stop was clicked; waiting for the worker to reach a safe point.
+    stopping: bool,
     step: String,
     last: Option<ResultView>,
     toast: Option<Toast>,
@@ -302,12 +339,14 @@ struct App {
 }
 
 #[cfg(debug_assertions)]
-const PAGES: [(Page, &str); 5] = [
+const PAGES: [(Page, &str); 6] = [
     (Page::Dashboard, "dashboard"),
     (Page::Settings, "settings"),
     (Page::Schedule, "schedule"),
     (Page::About, "about"),
     (Page::Dashboard, "dashboard_result"),
+    // Last: it leaves `running` set without a worker behind it.
+    (Page::Dashboard, "dashboard_running"),
 ];
 
 fn snapshot_mode() -> bool {
@@ -318,13 +357,14 @@ fn snapshot_mode() -> bool {
 }
 
 impl App {
-    fn new(cc: &eframe::CreationContext<'_>) -> Self {
+    fn new(cc: &eframe::CreationContext<'_>, show_requests: Option<ShowRequests>) -> Self {
         theme::install(&cc.egui_ctx);
         // FormCreate: enable the four privileges before anything else.
         privilege::enable(&privilege::STARTUP_PRIVILEGES);
 
         let config_path = config_path();
         let settings = Settings::load(&config_path);
+        let form = settings.schedule;
         let (tx, rx) = channel();
         let shared = Arc::new(Shared {
             settings: Mutex::new(settings.clone()),
@@ -337,6 +377,9 @@ impl App {
             spawn_auto_timer(shared.clone());
             tray::create(tx, cc.egui_ctx.clone())
         };
+        if let Some(requests) = show_requests {
+            spawn_show_listener(shared.clone(), requests);
+        }
 
         let mut app = Self {
             settings,
@@ -362,14 +405,15 @@ impl App {
             last_sample: None,
             last_slow_sample: None,
             running: false,
+            stopping: false,
             step: String::new(),
             last: None,
             toast: None,
-            trigger_kind: TriggerKind::Daily,
-            sched_hour: 3,
-            sched_minute: 0,
-            sched_day: 0,
-            sched_month_day: 1,
+            trigger_kind: TriggerKind::from_index(form.kind),
+            sched_hour: form.hour,
+            sched_minute: form.minute,
+            sched_day: form.weekday as usize,
+            sched_month_day: form.month_day,
             sched_busy: false,
             sched_msg: None,
             #[cfg(debug_assertions)]
@@ -446,8 +490,16 @@ impl App {
             return;
         }
         self.running = true;
+        self.stopping = false;
         self.step = "Getting ready…".into();
         spawn_optimization(&self.shared, mode);
+    }
+
+    fn stop(&mut self) {
+        if self.running && !self.stopping {
+            self.stopping = true;
+            optimizer::cancel();
+        }
     }
 
     fn show_window(&mut self, ctx: &egui::Context) {
@@ -489,10 +541,12 @@ impl App {
                 Event::Step(s) => self.step = s,
                 Event::AutoFired => {
                     self.running = true;
+                    self.stopping = false;
                     self.step = "Automatic cleanup…".into();
                 }
                 Event::Done(None) => {
                     self.running = false;
+                    self.stopping = false;
                     self.notify(
                         "Already running",
                         "A cleanup is already in progress.",
@@ -501,6 +555,16 @@ impl App {
                 }
                 Event::Done(Some(r)) => {
                     self.running = false;
+                    self.stopping = false;
+                    if r.cancelled {
+                        let body = if r.freed_kb > 0 {
+                            format!("Freed {} before stopping.", format_kb(r.freed_kb))
+                        } else {
+                            "No extra memory was freed.".to_owned()
+                        };
+                        self.notify("Cleanup stopped", &body, Level::Warn);
+                        continue;
+                    }
                     let (title, level) = if r.freed_kb > 0 {
                         (
                             format!("Freed {} of memory", format_kb(r.freed_kb)),
@@ -626,6 +690,32 @@ impl App {
 
     // ------------------------------------------------------------- dashboard
 
+    /// Spinner and the current step, centered under the Stop button. Up to two
+    /// lines, cut with "…" so long steps stay inside the card.
+    fn progress_line(&self, ui: &mut Ui) {
+        let (spin, gap) = (14.0, 8.0);
+        let w = ui.available_width();
+        let text = fitted_text(
+            ui.painter(),
+            &self.step,
+            regular(12.5),
+            MUTED,
+            w - spin - gap,
+            2,
+        );
+        let h = text.size().y.max(spin);
+        let row_h = text.size().y / text.rows.len().max(1) as f32;
+        let (r, _) = ui.allocate_exact_size(vec2(w, h), Sense::hover());
+        let x = r.center().x - (spin + gap + text.size().x) / 2.0;
+        let spin_rect = egui::Rect::from_min_size(
+            pos2(x, r.top() + (row_h - spin).max(0.0) / 2.0),
+            vec2(spin, spin),
+        );
+        ui.put(spin_rect, egui::Spinner::new().size(spin).color(CYAN));
+        ui.painter()
+            .galley(pos2(x + spin + gap, r.top()), text, MUTED);
+    }
+
     fn dashboard(&mut self, ui: &mut Ui) {
         Self::page_header(ui, "Overview", "Your computer's memory, updated live");
         let Some(m) = self.mem else {
@@ -667,20 +757,12 @@ impl App {
                     ui.add_space(6.0);
                     let btn = vec2(ui.available_width(), 46.0);
                     if self.running {
-                        let (r, _) = ui.allocate_exact_size(btn, Sense::hover());
-                        ui.painter().rect_filled(r, CornerRadius::same(23), CARD_HI);
-                        let spin = egui::Rect::from_center_size(
-                            pos2(r.left() + 26.0, r.center().y),
-                            vec2(18.0, 18.0),
-                        );
-                        ui.put(spin, egui::Spinner::new().size(18.0).color(CYAN));
-                        ui.painter().text(
-                            pos2(r.left() + 46.0, r.center().y),
-                            Align2::LEFT_CENTER,
-                            &self.step,
-                            regular(13.0),
-                            TEXT,
-                        );
+                        let text = if self.stopping { "Stopping…" } else { "Stop" };
+                        if stop_button(ui, btn, text, Some(icons::STOP), !self.stopping).clicked() {
+                            self.stop();
+                        }
+                        ui.add_space(8.0);
+                        self.progress_line(ui);
                     } else if primary_button(ui, btn, "Free up memory", Some(icons::BOLT), true)
                         .clicked()
                     {
@@ -906,8 +988,7 @@ impl App {
                 changed |= setting_toggle(
                     ui,
                     "Free memory from open apps",
-                    "Asks your running apps to give back memory they aren't using right now. \
-                     Always turned back on when the app starts.",
+                    "Asks your running apps to give back memory they aren't using right now.",
                     &mut s.trim_working_sets,
                 );
                 ui.separator();
@@ -1161,6 +1242,18 @@ impl App {
                     ui.add(egui::Spinner::new().color(CYAN));
                 }
             });
+            // Remember the choices so the page shows them again next time.
+            let form = ScheduleForm {
+                kind: self.trigger_kind.index(),
+                hour: self.sched_hour,
+                minute: self.sched_minute,
+                weekday: self.sched_day as u8,
+                month_day: self.sched_month_day,
+            };
+            if form != self.settings.schedule {
+                self.settings.schedule = form;
+                self.settings_changed();
+            }
             if let Some((ok, msg)) = &self.sched_msg {
                 ui.add_space(4.0);
                 let (icon, color) = if *ok {
@@ -1285,6 +1378,7 @@ impl App {
                 ("System cache", "Cleared".into(), Level::Ok),
             ],
             at: chrono_lite::Clock::now(),
+            cancelled: false,
         });
         self.notify(
             "Freed 1.23 GB of memory",
@@ -1430,6 +1524,12 @@ impl eframe::App for App {
                     if PAGES[i].1 == "dashboard_result" && self.last.is_none() {
                         self.load_snapshot_fixture();
                     }
+                    if PAGES[i].1 == "dashboard_running" && !self.running {
+                        // The longest step text, to check that it stays inside the card.
+                        self.toast = None;
+                        self.running = true;
+                        self.step = "Deep cleaning… this can take a while".into();
+                    }
                 }
                 snapshot::Step::Wait => {}
                 snapshot::Step::Finished => ctx.send_viewport_cmd(ViewportCommand::Close),
@@ -1468,6 +1568,22 @@ fn main() -> eframe::Result {
         run_scheduled_cleanup();
         return Ok(());
     }
+    // One window and one tray icon: a second launch brings the first one to the
+    // front instead (the sign-in task's `--minimized` launch just exits).
+    let instance = if snapshot_mode() {
+        None
+    } else {
+        match instance::acquire(instance::NAME) {
+            Acquired::AlreadyRunning => {
+                if !start_minimized() {
+                    instance::request_show(instance::NAME);
+                }
+                return Ok(());
+            }
+            Acquired::First(i) => Some(i),
+        }
+    };
+    let show_requests = instance.as_ref().and_then(|i| i.show_requests());
     let size = 256;
     let icon = egui::IconData {
         rgba: theme::app_icon_rgba(size),
@@ -1493,9 +1609,12 @@ fn main() -> eframe::Result {
         centered: !snapshot_mode(),
         ..Default::default()
     };
-    eframe::run_native(
+    let result = eframe::run_native(
         "OpenMemoryOptimizer",
         options,
-        Box::new(|cc| Ok(Box::new(App::new(cc)))),
-    )
+        Box::new(|cc| Ok(Box::new(App::new(cc, show_requests)))),
+    );
+    // Hold the instance mutex until the window is gone.
+    drop(instance);
+    result
 }

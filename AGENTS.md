@@ -11,6 +11,10 @@ faithful to them unless a change is a deliberate, documented divergence. Existin
 - Freed memory is reported honestly; the original faked 1–10 MB when nothing was freed.
 - `SetSystemFileCacheSize(0, 0, flags)` is skipped when hard cache limits are set.
 - `schtasks` gets `/f`.
+- A pass can be stopped (`optimizer::cancel`); the original cannot.
+- `trim_working_sets` is saved (`TrimWorkingSets`); the original never stores it and forces it on.
+- The Schedule page choices are saved (`Sched*` keys).
+- Only one instance runs per sign-in session (`instance.rs`).
 
 Licensed GPL-3.0-or-later. Every source file (including `build.rs`) starts with the GNU license notice.
 Add it to new source files.
@@ -38,6 +42,8 @@ The installer (`installer/OpenMemoryOptimizer.iss`, Inno Setup 6) installs machi
 "start when I sign in" task creates the scheduled task `OpenMemoryOptimizer Startup` running
 `--minimized`, because a Registry `Run` entry cannot auto-start an app that requires administrator rights.
 The uninstaller deletes that task and `schedule::TASK_NAME`, so keep those names in sync.
+The "launch the app" entry at the end needs `runascurrentuser`: `postinstall` entries otherwise run
+unelevated, and the `requireAdministrator` manifest makes that fail with "requires elevation".
 
 ### Why tests live only in the lib
 
@@ -78,7 +84,9 @@ creates the tag with the release and fails if the tag already exists. The About 
   The order is fixed: clipboard → defrag → trim all working sets → purge standby list → file cache →
   3 × 1 s settle → measure. `Mode::Manual` (button, scheduled task) honors every selected method.
   `Mode::Auto` (timer) skips defrag and standby and always trims. A static `RUNNING` flag makes
-  concurrent calls return `None`.
+  concurrent calls return `None`. `optimizer::cancel()` sets a flag that is checked between steps,
+  per process while trimming and per block while defragmenting (committed blocks are still freed);
+  the report then has `cancelled` set.
 - `techniques.rs` holds the five techniques. ntdll/psapi/kernel32 functions are resolved at runtime
   with `win::resolve` (LoadLibrary + GetProcAddress), as the original does, instead of being imported
   statically.
@@ -86,9 +94,12 @@ creates the tag with the release and fails if the tag already exists. The About 
   trimming of other processes silently do little without SeProfileSingleProcess, SeDebug and the
   other startup privileges.
 - `settings.rs` reads and writes `MemoryConfig.ini` next to the executable. Key names and defaults
-  match the original, including the misspelled `ClearStandy` key. `trim_working_sets` is never
-  persisted and is forced on at load. If neither `LowmemOpt` nor `periodOpt` is set, `LowmemOpt` is
-  forced on.
+  match the original, including the misspelled `ClearStandy` key. Added keys, missing from the
+  original's files: `TrimWorkingSets` (default 1) and the Schedule page fields `SchedKind`,
+  `SchedHour`, `SchedMinute`, `SchedWeekday`, `SchedMonthDay`. If neither `LowmemOpt` nor `periodOpt`
+  is set, `LowmemOpt` is forced on.
+- `instance.rs` keeps one instance per session: a named mutex plus an auto-reset "show" event.
+  A later launch signals the event and exits, and the first instance brings its window to the front.
 - `auto::AutoState::tick` is the pure auto-trigger logic for a 60 s tick:
   - Low-memory mode checks every 5th tick, requires free memory below the threshold, and, when
     idle-only is on, requires CPU ≤ 5 %.
@@ -100,8 +111,9 @@ creates the tag with the release and fails if the tag already exists. The About 
 
 **GUI (`src/gui/`)**: the single binary `OpenMemoryOptimizer`.
 - `main.rs`: `main()` handles `--optimize` first: it does one silent manual pass with the saved
-  settings and exits without a window. Otherwise it starts eframe with a borderless window and a
-  custom title bar.
+  settings and exits without a window. Next it takes the single-instance lock (skipped in snapshot
+  mode); if another instance holds it, it asks that one to show itself (unless `--minimized`) and
+  exits. Otherwise it starts eframe with a borderless window and a custom title bar.
 - Threading: background threads never touch UI state. The optimization worker, the auto-timer thread
   and the tray/menu event handlers send an `Event` over an mpsc channel held in `Shared` (which also
   holds the settings mutex and the `egui::Context`), then call `request_repaint()`.

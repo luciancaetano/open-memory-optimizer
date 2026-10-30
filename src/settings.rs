@@ -41,12 +41,39 @@ pub struct Settings {
     pub show_notice: bool,
     /// DefragMem (default 0).
     pub defrag_mem: bool,
-    /// Not stored; the original forces it on when loading settings (0xc91029).
+    /// TrimWorkingSets (default 1). Not in the original, which never stores it and
+    /// forces it on when loading settings (0xc91029).
     pub trim_working_sets: bool,
     /// ClearStandy (sic, default 0).
     pub clear_standby: bool,
     /// MinToTray (default 1): closing the GUI window hides it to the tray.
     pub min_to_tray: bool,
+    /// Last choices on the Schedule page, so it shows them again on the next start.
+    /// Not in the original. The task itself lives in Task Scheduler.
+    pub schedule: ScheduleForm,
+}
+
+/// Schedule page fields: SchedKind (0 daily, 1 weekly, 2 monthly, 3 idle, 4 sign-in),
+/// SchedHour, SchedMinute, SchedWeekday (0 = Monday) and SchedMonthDay.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ScheduleForm {
+    pub kind: u8,
+    pub hour: u8,
+    pub minute: u8,
+    pub weekday: u8,
+    pub month_day: u8,
+}
+
+impl Default for ScheduleForm {
+    fn default() -> Self {
+        Self {
+            kind: 0,
+            hour: 3,
+            minute: 0,
+            weekday: 0,
+            month_day: 1,
+        }
+    }
 }
 
 impl Default for Settings {
@@ -64,6 +91,13 @@ impl Settings {
                 .unwrap_or(default)
         };
         let boolean = |key: &str, default: bool| int(key, default as i64) != 0;
+        let ranged = |key: &str, range: std::ops::RangeInclusive<u8>, default: u8| -> u8 {
+            u8::try_from(int(key, default as i64))
+                .ok()
+                .filter(|v| range.contains(v))
+                .unwrap_or(default)
+        };
+        let form = ScheduleForm::default();
 
         let mut s = Settings {
             auto_opt: boolean("AutoOpt", true),
@@ -75,9 +109,16 @@ impl Settings {
             clear_clipboard: boolean("ClearBoard", true),
             show_notice: boolean("ShowNotice", true),
             defrag_mem: boolean("DefragMem", false),
-            trim_working_sets: true,
+            trim_working_sets: boolean("TrimWorkingSets", true),
             clear_standby: boolean("ClearStandy", false),
             min_to_tray: boolean("MinToTray", true),
+            schedule: ScheduleForm {
+                kind: ranged("SchedKind", 0..=4, form.kind),
+                hour: ranged("SchedHour", 0..=23, form.hour),
+                minute: ranged("SchedMinute", 0..=59, form.minute),
+                weekday: ranged("SchedWeekday", 0..=6, form.weekday),
+                month_day: ranged("SchedMonthDay", 1..=31, form.month_day),
+            },
         };
         if !(0..=100).contains(&s.low_mem_percent) {
             s.low_mem_percent = 30;
@@ -108,7 +149,7 @@ impl Settings {
     pub fn to_ini(&self) -> String {
         let b = |v: bool| if v { "1" } else { "0" };
         format!(
-            "[{SECTION}]\r\nAutoOpt={}\r\nLowmemOpt={}\r\nIdle={}\r\nLowMem={}\r\nperiodOpt={}\r\nperiodMinute={}\r\nClearBoard={}\r\nShowNotice={}\r\nDefragMem={}\r\nClearStandy={}\r\nMinToTray={}\r\n",
+            "[{SECTION}]\r\nAutoOpt={}\r\nLowmemOpt={}\r\nIdle={}\r\nLowMem={}\r\nperiodOpt={}\r\nperiodMinute={}\r\nClearBoard={}\r\nShowNotice={}\r\nDefragMem={}\r\nClearStandy={}\r\nMinToTray={}\r\nTrimWorkingSets={}\r\nSchedKind={}\r\nSchedHour={}\r\nSchedMinute={}\r\nSchedWeekday={}\r\nSchedMonthDay={}\r\n",
             b(self.auto_opt),
             b(self.lowmem_opt),
             b(self.idle_only),
@@ -120,6 +161,12 @@ impl Settings {
             b(self.defrag_mem),
             b(self.clear_standby),
             b(self.min_to_tray),
+            b(self.trim_working_sets),
+            self.schedule.kind,
+            self.schedule.hour,
+            self.schedule.minute,
+            self.schedule.weekday,
+            self.schedule.month_day,
         )
     }
 
@@ -179,8 +226,38 @@ mod tests {
         let s = Settings {
             defrag_mem: true,
             low_mem_percent: 42,
+            trim_working_sets: false,
+            schedule: ScheduleForm {
+                kind: 1,
+                hour: 22,
+                minute: 45,
+                weekday: 6,
+                month_day: 31,
+            },
             ..Settings::default()
         };
         assert_eq!(Settings::parse(&s.to_ini()), s);
+    }
+
+    #[test]
+    fn files_from_the_original_keep_the_old_defaults() {
+        // No TrimWorkingSets or Sched* keys: trimming stays on, schedule form is default.
+        let s = Settings::parse("[MemoryOptimizer]\nAutoOpt=1\nClearStandy=1\n");
+        assert!(s.trim_working_sets);
+        assert_eq!(s.schedule, ScheduleForm::default());
+    }
+
+    #[test]
+    fn out_of_range_schedule_values_fall_back() {
+        let s = Settings::parse(
+            "[MemoryOptimizer]\nSchedKind=9\nSchedHour=24\nSchedMinute=-1\nSchedWeekday=3\nSchedMonthDay=0\n",
+        );
+        let d = ScheduleForm::default();
+        assert_eq!(
+            (s.schedule.kind, s.schedule.hour, s.schedule.minute),
+            (d.kind, d.hour, d.minute)
+        );
+        assert_eq!(s.schedule.weekday, 3);
+        assert_eq!(s.schedule.month_day, d.month_day);
     }
 }
