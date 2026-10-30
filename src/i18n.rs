@@ -290,6 +290,7 @@ pub struct Strings {
     pub per_second: &'static str,
     pub boost_options: &'static str,
     pub boost_options_sub: &'static str,
+    pub booster_safe: &'static str,
     pub tech_priority_title: &'static str,
     pub tech_priority_desc: &'static str,
     pub tech_power_title: &'static str,
@@ -538,6 +539,8 @@ pub static EN: Strings = Strings {
     per_second: "/s",
     boost_options: "What Game Booster does",
     boost_options_sub: "Everything is undone when you restore or close the game",
+    booster_safe: "Never reads or changes the game's memory or files, and leaves anti-cheat alone. \
+                   It only changes how Windows shares your computer, like Task Manager does.",
     tech_priority_title: "Put the game first",
     tech_priority_desc: "The processor serves the game before other apps.",
     tech_power_title: "Never slow the game down to save energy",
@@ -760,6 +763,8 @@ pub static PT_BR: Strings = Strings {
     per_second: "/s",
     boost_options: "O que o Game Booster faz",
     boost_options_sub: "Tudo é desfeito quando você restaura ou fecha o jogo",
+    booster_safe: "Nunca lê nem altera a memória ou os arquivos do jogo e não mexe no anti-cheat. \
+                   Só muda como o Windows divide o computador, como o Gerenciador de Tarefas faz.",
     tech_priority_title: "Colocar o jogo em primeiro lugar",
     tech_priority_desc: "O processador atende o jogo antes dos outros apps.",
     tech_power_title: "Nunca deixar o jogo lento para economizar energia",

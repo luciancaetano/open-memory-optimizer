@@ -568,6 +568,18 @@ impl App {
             .auto_shrink([false, false])
             .show(ui, |ui| {
                 ui.spacing_mut().item_spacing.y = 8.0;
+                ui.horizontal_top(|ui| {
+                    ui.spacing_mut().item_spacing.x = 8.0;
+                    label(ui, icons::SHIELD, theme::icon(14.0), GREEN);
+                    ui.add(
+                        egui::Label::new(
+                            egui::RichText::new(t.booster_safe)
+                                .font(regular(12.5))
+                                .color(GREEN),
+                        )
+                        .wrap(),
+                    );
+                });
                 if boosted {
                     label(ui, t.boost_note, regular(12.0), AMBER);
                 }

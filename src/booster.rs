@@ -32,11 +32,13 @@
 //! 5. Free memory before playing: trim other processes and purge the standby list.
 //! 6. Optional: on hybrid CPUs, prefer the performance cores (CPU Sets, a soft hint).
 //! 7. While boosted, automatic cleanups do not trim the game.
+//!
+//! The game's memory and code are never read or changed, and anti-cheat processes
+//! are never touched: see [`GAME_ACCESS`] and [`shield`].
 
 use std::ffi::c_void;
 use std::mem::{size_of, zeroed};
-use std::sync::atomic::{AtomicU32, Ordering};
-use std::sync::OnceLock;
+use std::sync::{Mutex, OnceLock};
 use std::time::Duration;
 
 use windows_sys::core::GUID;
@@ -52,6 +54,11 @@ use windows_sys::Win32::System::Threading::{
     PROCESS_POWER_THROTTLING_EXECUTION_SPEED, PROCESS_POWER_THROTTLING_IGNORE_TIMER_RESOLUTION,
     PROCESS_POWER_THROTTLING_STATE, PROCESS_QUERY_INFORMATION, PROCESS_QUERY_LIMITED_INFORMATION,
     PROCESS_SET_INFORMATION, PROCESS_SET_LIMITED_INFORMATION, REALTIME_PRIORITY_CLASS,
+};
+#[cfg(test)]
+use windows_sys::Win32::System::Threading::{
+    PROCESS_CREATE_PROCESS, PROCESS_CREATE_THREAD, PROCESS_DUP_HANDLE, PROCESS_SUSPEND_RESUME,
+    PROCESS_TERMINATE, PROCESS_VM_OPERATION, PROCESS_VM_READ, PROCESS_VM_WRITE,
 };
 
 use crate::memory;
@@ -129,15 +136,55 @@ impl Outcome {
 // 7. Keep the game's memory during automatic cleanups
 // ---------------------------------------------------------------------------
 
-static PROTECTED: AtomicU32 = AtomicU32::new(0);
+/// The boosted game first, then its helper and anti-cheat processes.
+static PROTECTED: Mutex<Vec<u32>> = Mutex::new(Vec::new());
 
-/// PIDs that cleanups must not trim (the boosted game, if any).
+/// PIDs that cleanups must not touch while a game is boosted.
 pub fn protected() -> Vec<u32> {
-    match PROTECTED.load(Ordering::Acquire) {
-        0 => Vec::new(),
-        pid => vec![pid],
-    }
+    PROTECTED.lock().map(|v| v.clone()).unwrap_or_default()
 }
+
+/// The game, the processes it started (launchers, crash handlers, anti-cheat
+/// bootstrappers) and every anti-cheat process running.
+pub fn shield(game: u32, procs: &[ProcInfo]) -> Vec<u32> {
+    let mut pids = vec![game];
+    pids.extend(
+        procs
+            .iter()
+            .filter(|p| p.pid != game && (p.parent == game || process::is_anti_cheat(&p.name)))
+            .map(|p| p.pid),
+    );
+    pids
+}
+
+// ---------------------------------------------------------------------------
+// Access rights
+// ---------------------------------------------------------------------------
+//
+// Game Booster never reads, writes or maps the game's memory, never runs code in
+// it, never suspends it and never duplicates its handles. These are the only
+// rights it asks for; the test below checks that none of the rights anti-cheat
+// software guards against is among them.
+
+/// Asked of the game: read its times, set its priority class, power-throttling
+/// state and default CPU Sets. The same as Task Manager's "Set priority".
+pub const GAME_ACCESS: u32 =
+    PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_SET_INFORMATION | PROCESS_SET_LIMITED_INFORMATION;
+
+/// Asked of the background apps that are calmed down (never the game or anti-cheat).
+pub const CALM_ACCESS: u32 =
+    PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_QUERY_INFORMATION | PROCESS_SET_INFORMATION;
+
+/// Rights that would let a program read or change a game: never requested.
+#[cfg(test)]
+const FORBIDDEN_ACCESS: u32 = PROCESS_VM_READ
+    | PROCESS_VM_WRITE
+    | PROCESS_VM_OPERATION
+    | PROCESS_CREATE_THREAD
+    | PROCESS_CREATE_PROCESS
+    | PROCESS_DUP_HANDLE
+    | PROCESS_SUSPEND_RESUME
+    | PROCESS_TERMINATE;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -344,6 +391,7 @@ pub fn is_background_candidate(
         && session.is_some()
         && session == game.session
         && !NEVER_CALM.contains(&name.as_str())
+        && !process::is_anti_cheat(&name)
 }
 
 struct BgChange {
@@ -355,10 +403,7 @@ struct BgChange {
 }
 
 fn calm(pid: u32) -> Option<BgChange> {
-    let h = process::open(
-        pid,
-        PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_QUERY_INFORMATION | PROCESS_SET_INFORMATION,
-    )?;
+    let h = process::open(pid, CALM_ACCESS)?;
     let created = process::times(&h)?.created;
     // Only apps at normal priority: a custom priority was chosen by someone.
     if unsafe { GetPriorityClass(h.0) } != NORMAL_PRIORITY_CLASS {
@@ -424,12 +469,7 @@ pub struct Session {
 /// Applies the chosen techniques to `pid`. `None` if the process is gone.
 pub fn apply(pid: u32, opts: Options) -> Option<Session> {
     let created = process::creation_time(pid)?;
-    let game = process::open(
-        pid,
-        PROCESS_QUERY_LIMITED_INFORMATION
-            | PROCESS_SET_INFORMATION
-            | PROCESS_SET_LIMITED_INFORMATION,
-    );
+    let game = process::open(pid, GAME_ACCESS);
     let mut s = Session {
         pid,
         created,
@@ -442,7 +482,10 @@ pub fn apply(pid: u32, opts: Options) -> Option<Session> {
         restored: false,
     };
     // 7: set first so a cleanup started meanwhile already skips the game.
-    PROTECTED.store(pid, Ordering::Release);
+    let shielded = shield(pid, &process::snapshot());
+    if let Ok(mut p) = PROTECTED.lock() {
+        *p = shielded.clone();
+    }
     s.results.push((Technique::KeepMemory, Outcome::Applied));
 
     if opts.high_priority {
@@ -538,7 +581,7 @@ pub fn apply(pid: u32, opts: Options) -> Option<Session> {
         let before = memory::status()
             .map(|m| memory::round_kb(m.avail_phys))
             .ok();
-        let trimmed = techniques::trim_all_working_sets(&|| false, &[pid]).is_ok();
+        let trimmed = techniques::trim_all_working_sets(&|| false, &shielded).is_ok();
         let purged = techniques::purge_standby_list() == Some(0);
         std::thread::sleep(Duration::from_secs(1));
         let after = memory::status()
@@ -560,18 +603,18 @@ impl Session {
             return;
         }
         self.restored = true;
-        let _ = PROTECTED.compare_exchange(self.pid, 0, Ordering::AcqRel, Ordering::Acquire);
+        if let Ok(mut p) = PROTECTED.lock() {
+            if p.first() == Some(&self.pid) {
+                p.clear();
+            }
+        }
         if let Some(g) = self.power_scheme.take() {
             set_power_scheme(&g);
         }
         for c in self.background.drain(..) {
             uncalm(&c);
         }
-        let Some(h) = open_same(
-            self.pid,
-            self.created,
-            PROCESS_SET_INFORMATION | PROCESS_SET_LIMITED_INFORMATION,
-        ) else {
+        let Some(h) = open_same(self.pid, self.created, GAME_ACCESS) else {
             return; // The game has exited: nothing left to undo on it.
         };
         if let Some(prev) = self.priority.take() {
@@ -624,6 +667,27 @@ mod tests {
         assert!(!ok(&proc(203, 10, "AudioDG.exe"), Some(1)));
         assert!(!ok(&proc(204, 10, "explorer.exe"), Some(1)));
         assert!(!ok(&proc(4, 0, "System"), Some(1)));
+        assert!(!ok(&proc(205, 10, "EasyAntiCheat_EOS.exe"), Some(1)));
+        assert!(!ok(&proc(206, 10, "vgtray.exe"), Some(1)));
+    }
+
+    #[test]
+    fn never_asks_for_rights_that_touch_a_game() {
+        for access in [GAME_ACCESS, CALM_ACCESS, techniques::TRIM_ACCESS] {
+            assert_eq!(access & FORBIDDEN_ACCESS, 0, "{access:#x}");
+        }
+    }
+
+    #[test]
+    fn shield_covers_game_helpers_and_anti_cheat() {
+        let procs = [
+            proc(100, 10, "game.exe"),
+            proc(101, 100, "crashpad_handler.exe"),
+            proc(102, 10, "BEService.exe"),
+            proc(103, 10, "chrome.exe"),
+            proc(104, 1, "vgc.exe"),
+        ];
+        assert_eq!(shield(100, &procs), vec![100, 101, 102, 104]);
     }
 
     #[test]
@@ -661,7 +725,7 @@ mod tests {
         };
         let pid = std::process::id();
         let mut s = apply(pid, opts).unwrap();
-        assert_eq!(protected(), vec![pid]);
+        assert_eq!(protected().first(), Some(&pid));
         assert!(s
             .results
             .contains(&(Technique::NoPowerSaving, Outcome::Applied)));

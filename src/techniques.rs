@@ -22,7 +22,7 @@ use std::ptr::{null, null_mut};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::OnceLock;
 
-use windows_sys::Win32::Foundation::{GENERIC_READ, HANDLE, TRUE};
+use windows_sys::Win32::Foundation::{FALSE, GENERIC_READ, HANDLE};
 use windows_sys::Win32::Storage::FileSystem::{
     CreateFileW, FlushFileBuffers, FILE_SHARE_READ, FILE_SHARE_WRITE, OPEN_EXISTING,
 };
@@ -34,10 +34,11 @@ use windows_sys::Win32::System::Memory::{
     VirtualAlloc, VirtualFree, MEM_COMMIT, MEM_RELEASE, PAGE_NOCACHE, PAGE_READWRITE,
 };
 use windows_sys::Win32::System::Threading::{
-    OpenProcess, SetProcessWorkingSetSize, PROCESS_ALL_ACCESS,
+    OpenProcess, SetProcessWorkingSetSize, PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_SET_QUOTA,
 };
 
 use crate::privilege;
+use crate::process;
 use crate::win::{resolve, wide, OwnedHandle};
 
 // ---------------------------------------------------------------------------
@@ -123,7 +124,13 @@ pub fn defrag_memory(blocks: u32, stop: &dyn Fn() -> bool) -> Option<DefragStats
 // 3. Working-set trim of every process (0xc8d170)
 //    Toolhelp snapshot -> OpenProcess(PROCESS_ALL_ACCESS, TRUE, pid)
 //    -> SetProcessWorkingSetSize(h, -1, -1) -> psapi!EmptyWorkingSet(h)
+//    Divergence: the handle asks only for what the two calls need (TRIM_ACCESS)
+//    and is not inheritable. Full access (memory read/write, thread creation) is
+//    what anti-cheat software watches for, and it was never used.
 // ---------------------------------------------------------------------------
+
+/// Rights `SetProcessWorkingSetSize` and `EmptyWorkingSet` require.
+pub const TRIM_ACCESS: u32 = PROCESS_SET_QUOTA | PROCESS_QUERY_LIMITED_INFORMATION;
 
 type EmptyWorkingSet = unsafe extern "system" fn(HANDLE) -> i32;
 
@@ -142,8 +149,9 @@ pub struct TrimStats {
     pub empty_ws_ok: u32,
 }
 
-/// `stop` is polled before each process. Processes in `skip` are left alone (the
-/// game while Game Booster is on; the original trims every process).
+/// `stop` is polled before each process. Processes in `skip` (a boosted game and
+/// its helpers) and anti-cheat processes are left alone; the original trims every
+/// process.
 pub fn trim_all_working_sets(stop: &dyn Fn() -> bool, skip: &[u32]) -> std::io::Result<TrimStats> {
     let snapshot = OwnedHandle::new(unsafe { CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) })
         .ok_or_else(std::io::Error::last_os_error)?;
@@ -153,13 +161,15 @@ pub fn trim_all_working_sets(stop: &dyn Fn() -> bool, skip: &[u32]) -> std::io::
     entry.dwSize = size_of::<PROCESSENTRY32W>() as u32; // 0x238, as in the original
     let mut more = unsafe { Process32FirstW(snapshot.0, &mut entry) } != 0;
     while more && !stop() {
-        if skip.contains(&entry.th32ProcessID) {
+        let name_len = entry.szExeFile.iter().position(|&c| c == 0).unwrap_or(0);
+        let name = String::from_utf16_lossy(&entry.szExeFile[..name_len]);
+        if skip.contains(&entry.th32ProcessID) || process::is_anti_cheat(&name) {
             more = unsafe { Process32NextW(snapshot.0, &mut entry) } != 0;
             continue;
         }
         stats.processes += 1;
-        // bInheritHandle is TRUE in the original (edx = -1).
-        let h = unsafe { OpenProcess(PROCESS_ALL_ACCESS, TRUE, entry.th32ProcessID) };
+        // The original asks for PROCESS_ALL_ACCESS with bInheritHandle TRUE.
+        let h = unsafe { OpenProcess(TRIM_ACCESS, FALSE, entry.th32ProcessID) };
         if let Some(process) = OwnedHandle::new(h) {
             stats.opened += 1;
             if unsafe { SetProcessWorkingSetSize(process.0, usize::MAX, usize::MAX) } != 0 {
@@ -307,6 +317,17 @@ mod tests {
         };
         let stats = defrag_memory(4, &stop).unwrap();
         assert_eq!((stats.requested, stats.committed), (4, 2));
+    }
+
+    #[test]
+    fn trim_access_is_enough_to_trim() {
+        let h = OwnedHandle::new(unsafe { OpenProcess(TRIM_ACCESS, FALSE, std::process::id()) })
+            .unwrap();
+        assert_ne!(
+            unsafe { SetProcessWorkingSetSize(h.0, usize::MAX, usize::MAX) },
+            0
+        );
+        assert_ne!(unsafe { empty_working_set_fn().unwrap()(h.0) }, 0);
     }
 
     #[test]

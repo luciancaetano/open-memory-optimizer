@@ -17,7 +17,13 @@ faithful to them unless a change is a deliberate, documented divergence. Existin
 - Only one instance runs per sign-in session (`instance.rs`).
 - The interface is in English and Brazilian Portuguese (`i18n.rs`, `Language` key); the original is English only.
 - The Game Booster page (`booster.rs`, `process.rs`, `gui/game_page.rs`) does not exist in the original. While a
-  game is boosted, working-set trims skip it (`booster::protected()`); the original trims every process.
+  game is boosted, working-set trims skip it and its helper processes (`booster::protected()`); the
+  original trims every process.
+- Working-set trims open processes with `techniques::TRIM_ACCESS` (`PROCESS_SET_QUOTA` +
+  `PROCESS_QUERY_LIMITED_INFORMATION`, not inheritable) instead of the original's inheritable
+  `PROCESS_ALL_ACCESS`, and always skip anti-cheat processes (`process::is_anti_cheat`). Nothing may
+  ask a game for memory, thread, handle-duplication, suspend or terminate rights: the test
+  `booster::tests::never_asks_for_rights_that_touch_a_game` enforces it for every access mask.
 
 Licensed GPL-3.0-or-later. Every source file (including `build.rs`) starts with the GNU license notice.
 Add it to new source files.

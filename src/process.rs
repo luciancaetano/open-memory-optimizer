@@ -153,6 +153,44 @@ pub fn matches(p: &ProcInfo, filter: &str) -> bool {
             .is_some_and(|t| t.to_lowercase().contains(&f))
 }
 
+/// Anti-cheat clients and services (Easy Anti-Cheat, BattlEye, Vanguard, EA
+/// Javelin, FACEIT, ESEA, PunkBuster, nProtect GameGuard, Tencent ACE, XIGNCODE).
+/// The app never opens, slows down or trims them.
+const ANTI_CHEAT: &[&str] = &[
+    "beservice.exe",
+    "beservice_x64.exe",
+    "easyanticheat.exe",
+    "easyanticheat_eos.exe",
+    "eseaclient.exe",
+    "esportal.exe",
+    "faceit.exe",
+    "faceitclient.exe",
+    "faceitservice.exe",
+    "gamemon.des",
+    "gamemon.exe",
+    "gamemon64.exe",
+    "pnkbstra.exe",
+    "pnkbstrb.exe",
+    "sguard64.exe",
+    "sguardsvc64.exe",
+    "vgc.exe",
+    "vgtray.exe",
+    "xxd-0.xem",
+];
+
+/// True for anti-cheat processes and launchers, including the `<game>_BE.exe` and
+/// `<game>_EAC.exe` bootstrappers games ship.
+pub fn is_anti_cheat(name: &str) -> bool {
+    let n = name.to_ascii_lowercase();
+    ANTI_CHEAT.contains(&n.as_str())
+        || n.contains("anticheat")
+        || n.contains("anti-cheat")
+        || n.contains("battleye")
+        || n.ends_with("_be.exe")
+        || n.ends_with("_eac.exe")
+        || n.ends_with("_eac_eos.exe")
+}
+
 pub fn session_of(pid: u32) -> Option<u32> {
     let mut session = 0;
     (unsafe { ProcessIdToSessionId(pid, &mut session) } != 0).then_some(session)
@@ -525,6 +563,24 @@ mod tests {
         assert!(matches(&v[1], "GAME.EXE"));
         assert!(!matches(&v[2], "game"));
         assert!(matches(&v[2], "  "));
+    }
+
+    #[test]
+    fn recognizes_anti_cheat() {
+        for n in [
+            "EasyAntiCheat_EOS.exe",
+            "BEService.exe",
+            "vgc.exe",
+            "FortniteClient-Win64-Shipping_BE.exe",
+            "Game_EAC.exe",
+            "EAAntiCheat.GameServiceLauncher.exe",
+            "FACEIT.exe",
+        ] {
+            assert!(is_anti_cheat(n), "{n}");
+        }
+        for n in ["game.exe", "chrome.exe", "Discord.exe", "steam.exe"] {
+            assert!(!is_anti_cheat(n), "{n}");
+        }
     }
 
     #[test]
