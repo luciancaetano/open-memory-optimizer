@@ -21,6 +21,7 @@ Requires Windows, the MSVC Rust toolchain and the Windows SDK (`rc.exe`, used by
 
 ```
 build.cmd                        # release build -> dist\OpenMemoryOptimizer.exe + dist\OpenMemoryOptimizer-win64.zip
+build.cmd installer              # also dist\OpenMemoryOptimizer-Setup-<version>.exe (needs Inno Setup 6)
 build.cmd clean                  # same, from scratch
 cargo test                       # all unit tests (lib only)
 cargo test --lib auto::tests::period_mode_counts_minutes   # single test
@@ -29,7 +30,14 @@ cargo fmt
 cargo build --features as-invoker --target-dir target/invoker   # dev build that starts without UAC
 ```
 
-From Git Bash, run the batch file as `cmd //c "C:\\full\\path\\build.cmd"`. Keep `.cmd` files CRLF.
+From Git Bash, run the batch file as `cmd //c "C:\\full\\path\\build.cmd"`. Keep `.cmd` files CRLF
+without a BOM (a BOM breaks the first line); keep `installer/*.iss` CRLF with a UTF-8 BOM (Inno Setup
+needs it for the Portuguese strings).
+
+The installer (`installer/OpenMemoryOptimizer.iss`, Inno Setup 6) installs machine-wide. Its optional
+"start when I sign in" task creates the scheduled task `OpenMemoryOptimizer Startup` running
+`--minimized`, because a Registry `Run` entry cannot auto-start an app that requires administrator rights.
+The uninstaller deletes that task and `schedule::TASK_NAME`, so keep those names in sync.
 
 ### Why tests live only in the lib
 

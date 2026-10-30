@@ -19,10 +19,11 @@
 Requires Windows 10/11 and [Rust](https://rustup.rs).
 
 ```
-build.cmd
+build.cmd             # dist\OpenMemoryOptimizer.exe
+build.cmd installer   # also dist\OpenMemoryOptimizer-Setup-<version>.exe
 ```
 
-The app is created in `dist\OpenMemoryOptimizer.exe`.
+The installer needs [Inno Setup 6](https://jrsoftware.org/isinfo.php) (`winget install JRSoftware.InnoSetup`).
 
 ## License
 
