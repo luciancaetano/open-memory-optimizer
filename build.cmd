@@ -85,4 +85,8 @@ echo Done:
 echo   dist\OpenMemoryOptimizer.exe
 echo   dist\OpenMemoryOptimizer-win64.zip
 if defined DO_INSTALLER echo   dist\OpenMemoryOptimizer-Setup-%VERSION%.exe
+if not defined DO_INSTALLER (
+    echo.
+    echo The installer was not built. To build it too, run: build.cmd installer
+)
 endlocal
