@@ -19,6 +19,8 @@
 
 use std::path::Path;
 
+use crate::i18n::Lang;
+
 pub const SECTION: &str = "MemoryOptimizer";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -51,6 +53,9 @@ pub struct Settings {
     /// Last choices on the Schedule page, so it shows them again on the next start.
     /// Not in the original. The task itself lives in Task Scheduler.
     pub schedule: ScheduleForm,
+    /// Language (`auto`, `en` or `pt-BR`; default `auto`). `None` follows Windows.
+    /// Not in the original, which is English only.
+    pub language: Option<Lang>,
 }
 
 /// Schedule page fields: SchedKind (0 daily, 1 weekly, 2 monthly, 3 idle, 4 sign-in),
@@ -119,6 +124,7 @@ impl Settings {
                 weekday: ranged("SchedWeekday", 0..=6, form.weekday),
                 month_day: ranged("SchedMonthDay", 1..=31, form.month_day),
             },
+            language: get("Language").and_then(|v| Lang::from_code(&v)),
         };
         if !(0..=100).contains(&s.low_mem_percent) {
             s.low_mem_percent = 30;
@@ -149,7 +155,7 @@ impl Settings {
     pub fn to_ini(&self) -> String {
         let b = |v: bool| if v { "1" } else { "0" };
         format!(
-            "[{SECTION}]\r\nAutoOpt={}\r\nLowmemOpt={}\r\nIdle={}\r\nLowMem={}\r\nperiodOpt={}\r\nperiodMinute={}\r\nClearBoard={}\r\nShowNotice={}\r\nDefragMem={}\r\nClearStandy={}\r\nMinToTray={}\r\nTrimWorkingSets={}\r\nSchedKind={}\r\nSchedHour={}\r\nSchedMinute={}\r\nSchedWeekday={}\r\nSchedMonthDay={}\r\n",
+            "[{SECTION}]\r\nAutoOpt={}\r\nLowmemOpt={}\r\nIdle={}\r\nLowMem={}\r\nperiodOpt={}\r\nperiodMinute={}\r\nClearBoard={}\r\nShowNotice={}\r\nDefragMem={}\r\nClearStandy={}\r\nMinToTray={}\r\nTrimWorkingSets={}\r\nSchedKind={}\r\nSchedHour={}\r\nSchedMinute={}\r\nSchedWeekday={}\r\nSchedMonthDay={}\r\nLanguage={}\r\n",
             b(self.auto_opt),
             b(self.lowmem_opt),
             b(self.idle_only),
@@ -167,6 +173,7 @@ impl Settings {
             self.schedule.minute,
             self.schedule.weekday,
             self.schedule.month_day,
+            self.language.map_or("auto", Lang::code),
         )
     }
 
@@ -234,6 +241,7 @@ mod tests {
                 weekday: 6,
                 month_day: 31,
             },
+            language: Some(Lang::PtBr),
             ..Settings::default()
         };
         assert_eq!(Settings::parse(&s.to_ini()), s);
@@ -245,6 +253,18 @@ mod tests {
         let s = Settings::parse("[MemoryOptimizer]\nAutoOpt=1\nClearStandy=1\n");
         assert!(s.trim_working_sets);
         assert_eq!(s.schedule, ScheduleForm::default());
+        assert_eq!(s.language, None);
+    }
+
+    #[test]
+    fn language_auto_and_unknown_follow_windows() {
+        let lang =
+            |v: &str| Settings::parse(&format!("[MemoryOptimizer]\nLanguage={v}\n")).language;
+        assert_eq!(lang("pt-BR"), Some(Lang::PtBr));
+        assert_eq!(lang("en"), Some(Lang::En));
+        assert_eq!(lang("auto"), None);
+        assert_eq!(lang("xx"), None);
+        assert!(Settings::default().to_ini().contains("Language=auto\r\n"));
     }
 
     #[test]

@@ -15,6 +15,7 @@ faithful to them unless a change is a deliberate, documented divergence. Existin
 - `trim_working_sets` is saved (`TrimWorkingSets`); the original never stores it and forces it on.
 - The Schedule page choices are saved (`Sched*` keys).
 - Only one instance runs per sign-in session (`instance.rs`).
+- The interface is in English and Brazilian Portuguese (`i18n.rs`, `Language` key); the original is English only.
 
 Licensed GPL-3.0-or-later. Every source file (including `build.rs`) starts with the GNU license notice.
 Add it to new source files.
@@ -61,7 +62,10 @@ framebuffer to PNG, then exits:
 ```
 cargo build --features as-invoker --target-dir target/invoker
 MEMOPT_SNAPSHOT=<dir> target/invoker/debug/OpenMemoryOptimizer.exe
+MEMOPT_SNAPSHOT=<dir> MEMOPT_LANG=pt-BR target/invoker/debug/OpenMemoryOptimizer.exe   # in Portuguese
 ```
+
+Check both languages when changing UI text: Portuguese runs about 20-30 % longer.
 
 The page list is `PAGES` in `src/gui/main.rs`. The `dashboard_result` page loads a fixture
 (`load_snapshot_fixture`) so the result card and toast render without running a real optimization.
@@ -96,8 +100,15 @@ creates the tag with the release and fails if the tag already exists. The About 
 - `settings.rs` reads and writes `MemoryConfig.ini` next to the executable. Key names and defaults
   match the original, including the misspelled `ClearStandy` key. Added keys, missing from the
   original's files: `TrimWorkingSets` (default 1) and the Schedule page fields `SchedKind`,
-  `SchedHour`, `SchedMinute`, `SchedWeekday`, `SchedMonthDay`. If neither `LowmemOpt` nor `periodOpt`
+  `SchedHour`, `SchedMinute`, `SchedWeekday`, `SchedMonthDay`, and `Language` (`auto`, `en`, `pt-BR`;
+  `auto` follows the Windows display language). If neither `LowmemOpt` nor `periodOpt`
   is set, `LowmemOpt` is forced on.
+- `i18n.rs` holds every GUI string, one `Strings` table per language (`EN`, `PT_BR`), so a missing
+  translation does not compile. Texts with values are `fn` fields (`(t.freed)(&size)`). `tr()` returns
+  the current table; `i18n::set` switches it. `Strings::size`/`decimal` format numbers with the
+  language's decimal separator. Anything worded after the fact (progress line, last-cleanup steps,
+  schedule message) is stored as an enum and turned into text when drawn, so switching language
+  updates it.
 - `instance.rs` keeps one instance per session: a named mutex plus an auto-reset "show" event.
   A later launch signals the event and exits, and the first instance brings its window to the front.
 - `auto::AutoState::tick` is the pure auto-trigger logic for a 60 s tick:
@@ -142,6 +153,8 @@ egui 0.37 API notes, since older examples won't compile:
 
 ## UI copy
 
-All user-facing text is plain English for non-technical users. Don't expose API names, "working
-sets", "standby list", NTSTATUS codes, etc. in the GUI; map them to everyday wording, such as
-"Free memory from open apps" or "Cached memory".
+All user-facing text is plain language for non-technical users, in English and Brazilian Portuguese.
+Don't expose API names, "working sets", "standby list", NTSTATUS codes, etc. in the GUI; map them to
+everyday wording, such as "Free memory from open apps" or "Cached memory". Never put a UI string in
+`src/gui/`: add a field to `Strings` in `i18n.rs` and fill it for every language. The tray menu is
+built once, so a language change calls `Tray::relabel`.

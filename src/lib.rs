@@ -16,6 +16,7 @@
 
 pub mod auto;
 pub mod cpu;
+pub mod i18n;
 pub mod instance;
 pub mod memory;
 pub mod optimizer;

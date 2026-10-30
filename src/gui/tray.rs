@@ -22,6 +22,8 @@ use std::sync::mpsc::Sender;
 use tray_icon::menu::{Menu, MenuEvent, MenuId, MenuItem, PredefinedMenuItem};
 use tray_icon::{Icon, MouseButton, MouseButtonState, TrayIcon, TrayIconBuilder, TrayIconEvent};
 
+use open_memory_optimizer::i18n::tr;
+
 use crate::Event;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -34,16 +36,29 @@ pub enum TrayMsg {
 pub struct Tray {
     pub icon: TrayIcon,
     // Menu items must outlive the menu.
-    _items: Vec<MenuItem>,
+    open: MenuItem,
+    optimize: MenuItem,
+    quit: MenuItem,
+}
+
+impl Tray {
+    /// Shows the menu in the current language.
+    pub fn relabel(&self) {
+        let t = tr();
+        self.open.set_text(t.tray_open);
+        self.optimize.set_text(t.free_up_memory);
+        self.quit.set_text(t.tray_exit);
+    }
 }
 
 pub fn create(tx: Sender<Event>, ctx: egui::Context) -> Option<Tray> {
     let size = 32;
     let icon = Icon::from_rgba(crate::theme::app_icon_rgba(size), size, size).ok()?;
 
-    let open = MenuItem::new("Open OpenMemoryOptimizer", true, None);
-    let optimize = MenuItem::new("Free up memory", true, None);
-    let quit = MenuItem::new("Exit", true, None);
+    let t = tr();
+    let open = MenuItem::new(t.tray_open, true, None);
+    let optimize = MenuItem::new(t.free_up_memory, true, None);
+    let quit = MenuItem::new(t.tray_exit, true, None);
     let menu = Menu::new();
     menu.append(&open).ok()?;
     menu.append(&optimize).ok()?;
@@ -92,6 +107,8 @@ pub fn create(tx: Sender<Event>, ctx: egui::Context) -> Option<Tray> {
         .ok()?;
     Some(Tray {
         icon,
-        _items: vec![open, optimize, quit],
+        open,
+        optimize,
+        quit,
     })
 }

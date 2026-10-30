@@ -30,6 +30,7 @@ Requires Windows 10 or 11 (64-bit).
 - Automatic cleanup when memory runs low or on a timer
 - Scheduled cleanups (daily, weekly, at sign-in…)
 - Runs quietly in the system tray
+- English and Portuguese (Brazil)
 
 ## Build
 

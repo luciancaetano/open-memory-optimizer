@@ -162,6 +162,23 @@ pub fn primary_button(
     pill_button(ui, size, text, icon, enabled, PillStyle::Primary)
 }
 
+/// Width a pill button needs to show `text` and `icon` without cutting them.
+pub fn pill_width(ui: &Ui, text: &str, icon: Option<&str>) -> f32 {
+    let painter = ui.painter();
+    let text_w = painter
+        .layout_no_wrap(text.to_owned(), semibold(15.0), TEXT)
+        .size()
+        .x;
+    let icon_w = icon.map_or(0.0, |i| {
+        painter
+            .layout_no_wrap(i.to_owned(), theme::icon(15.0), TEXT)
+            .size()
+            .x
+            + 9.0
+    });
+    (text_w + icon_w + 34.0).ceil()
+}
+
 /// Quiet pill button that turns red on hover, for stopping a running task.
 pub fn stop_button(
     ui: &mut Ui,
