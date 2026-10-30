@@ -1,0 +1,19 @@
+# Rust build output
+/target/
+
+# Packaged releases (rebuild with `cargo build --release`)
+/dist/
+*.zip
+
+# MSVC debug symbols
+*.pdb
+
+# Settings written next to the executable at runtime
+MemoryConfig.ini
+
+# Editor / OS clutter
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+desktop.ini

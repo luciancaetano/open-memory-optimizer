@@ -1,0 +1,51 @@
+[package]
+name = "open-memory-optimizer"
+version = "0.1.0"
+edition = "2021"
+description = "OpenMemoryOptimizer: a Windows memory optimizer with a simple GUI"
+license = "GPL-3.0-or-later"
+authors = ["Lucian Caetano"]
+publish = false
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "OpenMemoryOptimizer"
+path = "src/gui/main.rs"
+# The bin embeds a requireAdministrator manifest; keep tests in the lib.
+test = false
+
+[features]
+default = []
+# Embed an asInvoker manifest instead of requireAdministrator.
+# Only useful for development: most techniques silently do less without elevation.
+as-invoker = []
+
+[dependencies]
+eframe = "0.37.0"
+egui_plot = "0.38.0"
+image = { version = "0.25", default-features = false, features = ["png"] }
+tray-icon = "0.26.1"
+
+[dependencies.windows-sys]
+version = "0.59"
+features = [
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_Storage_FileSystem",
+    "Win32_System_DataExchange",
+    "Win32_System_Diagnostics_ToolHelp",
+    "Win32_System_LibraryLoader",
+    "Win32_System_Memory",
+    "Win32_System_Performance",
+    "Win32_System_SystemInformation",
+    "Win32_System_Threading",
+]
+
+[profile.release]
+lto = true
+codegen-units = 1
+
+[build-dependencies]
+embed-resource = "3"
