@@ -19,6 +19,7 @@
 
 use std::path::Path;
 
+use crate::booster;
 use crate::i18n::Lang;
 
 pub const SECTION: &str = "MemoryOptimizer";
@@ -56,6 +57,9 @@ pub struct Settings {
     /// Language (`auto`, `en` or `pt-BR`; default `auto`). `None` follows Windows.
     /// Not in the original, which is English only.
     pub language: Option<Lang>,
+    /// Game Booster choices: BoostPriority, BoostNoThrottle, BoostPowerPlan,
+    /// BoostBackground, BoostFreeMemory and BoostPerfCores. Not in the original.
+    pub booster: booster::Options,
 }
 
 /// Schedule page fields: SchedKind (0 daily, 1 weekly, 2 monthly, 3 idle, 4 sign-in),
@@ -103,6 +107,7 @@ impl Settings {
                 .unwrap_or(default)
         };
         let form = ScheduleForm::default();
+        let boost = booster::Options::default();
 
         let mut s = Settings {
             auto_opt: boolean("AutoOpt", true),
@@ -125,6 +130,14 @@ impl Settings {
                 month_day: ranged("SchedMonthDay", 1..=31, form.month_day),
             },
             language: get("Language").and_then(|v| Lang::from_code(&v)),
+            booster: booster::Options {
+                high_priority: boolean("BoostPriority", boost.high_priority),
+                no_power_saving: boolean("BoostNoThrottle", boost.no_power_saving),
+                power_plan: boolean("BoostPowerPlan", boost.power_plan),
+                calm_background: boolean("BoostBackground", boost.calm_background),
+                free_memory: boolean("BoostFreeMemory", boost.free_memory),
+                performance_cores: boolean("BoostPerfCores", boost.performance_cores),
+            },
         };
         if !(0..=100).contains(&s.low_mem_percent) {
             s.low_mem_percent = 30;
@@ -155,7 +168,7 @@ impl Settings {
     pub fn to_ini(&self) -> String {
         let b = |v: bool| if v { "1" } else { "0" };
         format!(
-            "[{SECTION}]\r\nAutoOpt={}\r\nLowmemOpt={}\r\nIdle={}\r\nLowMem={}\r\nperiodOpt={}\r\nperiodMinute={}\r\nClearBoard={}\r\nShowNotice={}\r\nDefragMem={}\r\nClearStandy={}\r\nMinToTray={}\r\nTrimWorkingSets={}\r\nSchedKind={}\r\nSchedHour={}\r\nSchedMinute={}\r\nSchedWeekday={}\r\nSchedMonthDay={}\r\nLanguage={}\r\n",
+            "[{SECTION}]\r\nAutoOpt={}\r\nLowmemOpt={}\r\nIdle={}\r\nLowMem={}\r\nperiodOpt={}\r\nperiodMinute={}\r\nClearBoard={}\r\nShowNotice={}\r\nDefragMem={}\r\nClearStandy={}\r\nMinToTray={}\r\nTrimWorkingSets={}\r\nSchedKind={}\r\nSchedHour={}\r\nSchedMinute={}\r\nSchedWeekday={}\r\nSchedMonthDay={}\r\nLanguage={}\r\nBoostPriority={}\r\nBoostNoThrottle={}\r\nBoostPowerPlan={}\r\nBoostBackground={}\r\nBoostFreeMemory={}\r\nBoostPerfCores={}\r\n",
             b(self.auto_opt),
             b(self.lowmem_opt),
             b(self.idle_only),
@@ -174,6 +187,12 @@ impl Settings {
             self.schedule.weekday,
             self.schedule.month_day,
             self.language.map_or("auto", Lang::code),
+            b(self.booster.high_priority),
+            b(self.booster.no_power_saving),
+            b(self.booster.power_plan),
+            b(self.booster.calm_background),
+            b(self.booster.free_memory),
+            b(self.booster.performance_cores),
         )
     }
 
@@ -242,6 +261,12 @@ mod tests {
                 month_day: 31,
             },
             language: Some(Lang::PtBr),
+            booster: booster::Options {
+                high_priority: false,
+                calm_background: true,
+                performance_cores: true,
+                ..booster::Options::default()
+            },
             ..Settings::default()
         };
         assert_eq!(Settings::parse(&s.to_ini()), s);
@@ -254,6 +279,7 @@ mod tests {
         assert!(s.trim_working_sets);
         assert_eq!(s.schedule, ScheduleForm::default());
         assert_eq!(s.language, None);
+        assert_eq!(s.booster, booster::Options::default());
     }
 
     #[test]

@@ -18,6 +18,7 @@
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod game_page;
 #[cfg(debug_assertions)]
 mod snapshot;
 mod theme;
@@ -38,12 +39,14 @@ use egui::{
 use egui_plot::{Line, Plot, PlotPoints};
 
 use open_memory_optimizer::auto::{AutoState, TICK};
+use open_memory_optimizer::booster::Session;
 use open_memory_optimizer::cpu::CpuSampler;
 use open_memory_optimizer::i18n::{self, tr, Lang, Strings};
 use open_memory_optimizer::instance::{self, Acquired, ShowRequests};
 use open_memory_optimizer::memory::{self, MemStatus};
 use open_memory_optimizer::optimizer::{self, Methods, Mode, Report};
 use open_memory_optimizer::privilege;
+use open_memory_optimizer::process::ProcStats;
 use open_memory_optimizer::schedule::{self, Trigger};
 use open_memory_optimizer::settings::{ScheduleForm, Settings};
 
@@ -61,11 +64,16 @@ pub enum Event {
     AutoFired,
     Tray(tray::TrayMsg),
     Schedule(SchedMsg),
+    /// Game Booster sample for a pick (`None`: the process exited).
+    GameStats(u64, Option<ProcStats>),
+    /// Game Booster finished applying for a PID (`None`: the process was gone).
+    Boosted(u32, Option<Box<Session>>),
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Page {
     Dashboard,
+    Booster,
     Settings,
     Schedule,
     About,
@@ -426,17 +434,21 @@ struct App {
     sched_busy: bool,
     sched_msg: Option<SchedMsg>,
 
+    game: game_page::GamePage,
+
     #[cfg(debug_assertions)]
     snap: Option<snapshot::Snap>,
 }
 
 #[cfg(debug_assertions)]
-const PAGES: [(Page, &str); 6] = [
+const PAGES: [(Page, &str); 8] = [
     (Page::Dashboard, "dashboard"),
+    (Page::Booster, "booster"),
     (Page::Settings, "settings"),
     (Page::Schedule, "schedule"),
     (Page::About, "about"),
     (Page::Dashboard, "dashboard_result"),
+    (Page::Booster, "booster_active"),
     // Last: it leaves `running` set without a worker behind it.
     (Page::Dashboard, "dashboard_running"),
 ];
@@ -520,6 +532,7 @@ impl App {
             sched_month_day: form.month_day,
             sched_busy: false,
             sched_msg: None,
+            game: Default::default(),
             #[cfg(debug_assertions)]
             snap: snapshot::requested_dir()
                 .map(|d| snapshot::Snap::new(d, PAGES.iter().map(|(_, n)| *n).collect())),
@@ -694,6 +707,8 @@ impl App {
                     self.sched_busy = false;
                     self.sched_msg = Some(msg);
                 }
+                Event::GameStats(generation, s) => self.game_stats(generation, s),
+                Event::Boosted(pid, s) => self.game_boosted(pid, s),
             }
         }
     }
@@ -746,6 +761,7 @@ impl App {
         let t = tr();
         for (page, icon, text) in [
             (Page::Dashboard, icons::DASHBOARD, t.nav_overview),
+            (Page::Booster, icons::GAME, t.nav_booster),
             (Page::Settings, icons::SETTINGS, t.nav_settings),
             (Page::Schedule, icons::CLOCK, t.nav_schedule),
             (Page::About, icons::INFO, t.nav_about),
@@ -1605,6 +1621,7 @@ impl eframe::App for App {
             )
             .show(ui, |ui| match self.page {
                 Page::Dashboard => self.dashboard(ui),
+                Page::Booster => self.game_page(ui),
                 Page::Settings => self.settings_page(ui),
                 Page::Schedule => self.schedule_page(ui),
                 Page::About => self.about_page(ui),
@@ -1617,6 +1634,10 @@ impl eframe::App for App {
                     self.page = PAGES[i].0;
                     if PAGES[i].1 == "dashboard_result" && self.last.is_none() {
                         self.load_snapshot_fixture();
+                    }
+                    if PAGES[i].1 == "booster_active" && !self.game.has_pick() {
+                        self.toast = None;
+                        self.load_game_fixture();
                     }
                     if PAGES[i].1 == "dashboard_running" && !self.running {
                         // The longest step text, to check that it stays inside the card.

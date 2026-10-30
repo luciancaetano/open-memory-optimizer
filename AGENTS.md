@@ -16,6 +16,8 @@ faithful to them unless a change is a deliberate, documented divergence. Existin
 - The Schedule page choices are saved (`Sched*` keys).
 - Only one instance runs per sign-in session (`instance.rs`).
 - The interface is in English and Brazilian Portuguese (`i18n.rs`, `Language` key); the original is English only.
+- The Game Booster page (`booster.rs`, `process.rs`, `gui/game_page.rs`) does not exist in the original. While a
+  game is boosted, working-set trims skip it (`booster::protected()`); the original trims every process.
 
 Licensed GPL-3.0-or-later. Every source file (including `build.rs`) starts with the GNU license notice.
 Add it to new source files.
@@ -101,7 +103,9 @@ creates the tag with the release and fails if the tag already exists. The About 
   match the original, including the misspelled `ClearStandy` key. Added keys, missing from the
   original's files: `TrimWorkingSets` (default 1) and the Schedule page fields `SchedKind`,
   `SchedHour`, `SchedMinute`, `SchedWeekday`, `SchedMonthDay`, and `Language` (`auto`, `en`, `pt-BR`;
-  `auto` follows the Windows display language). If neither `LowmemOpt` nor `periodOpt`
+  `auto` follows the Windows display language), and the Game Booster choices `BoostPriority`,
+  `BoostNoThrottle`, `BoostPowerPlan`, `BoostFreeMemory` (default 1) and `BoostBackground`,
+  `BoostPerfCores` (default 0). If neither `LowmemOpt` nor `periodOpt`
   is set, `LowmemOpt` is forced on.
 - `i18n.rs` holds every GUI string, one `Strings` table per language (`EN`, `PT_BR`), so a missing
   translation does not compile. Texts with values are `fn` fields (`(t.freed)(&size)`). `tr()` returns
@@ -117,6 +121,16 @@ creates the tag with the release and fails if the tag already exists. The About 
   - Periodic mode fires every N ticks.
   - The caller drives the ticks.
 - `cpu.rs` computes CPU % from NtQuerySystemInformation idle-time deltas. The first sample returns 0.
+- `process.rs` lists processes (apps with a visible window first) and samples one process:
+  CPU % of the whole processor, memory, disk rates, threads, uptime, and GPU % / video memory from the
+  PDH `GPU Engine` and `GPU Process Memory` counters (instances named `pid_<N>_...`).
+- `booster.rs` is Game Booster. `apply(pid, options)` returns a `Session` that records every change;
+  `Session::restore` (also run on drop) undoes them, touching other processes only if their creation
+  time still matches. Techniques: high priority class (never realtime), power throttling (EcoQoS) off
+  for the game, High performance power plan, optional below-normal priority + EcoQoS + low I/O
+  priority for background apps of the game's session (Windows parts listed in `NEVER_CALM` are
+  spared), free memory (trim others + standby purge), optional performance-core CPU Sets on hybrid
+  CPUs, and the game is skipped by trims while boosted.
 - `schedule.rs` builds the `schtasks /create ... /RL HIGHEST` command. The task runs
   `OpenMemoryOptimizer.exe --optimize`.
 
@@ -129,6 +143,10 @@ creates the tag with the release and fails if the tag already exists. The About 
   and the tray/menu event handlers send an `Event` over an mpsc channel held in `Shared` (which also
   holds the settings mutex and the `egui::Context`), then call `request_repaint()`.
   `App::handle_events` drains the channel.
+- `game_page.rs` is the Game Booster page (an `impl App` block). A monitor thread samples the picked
+  process once a second (`Event::GameStats`, tagged with a pick generation); boosting runs on a
+  worker thread (`Event::Boosted`). When the game exits, the session is restored and a toast says so.
+  The `booster_active` snapshot page uses this app's own process as the game.
 - eframe 0.37 replaced `update` with `App::ui` plus `App::logic`. Only `logic` runs while the window
   is hidden in the tray (after `request_repaint`). Event handling and the "minimized → hide to tray"
   detection therefore live in `logic`. Tray restore uses `ViewportCommand::Visible/Minimized/Focus`.

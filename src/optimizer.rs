@@ -124,7 +124,10 @@ pub fn run(mode: Mode, methods: Methods, log: &mut dyn FnMut(&str)) -> Option<Re
     }
     if (mode == Mode::Auto || methods.trim_working_sets) && !cancelled() {
         log("Trimming working sets of all processes");
-        r.trim = Some(techniques::trim_all_working_sets(&cancelled));
+        r.trim = Some(techniques::trim_all_working_sets(
+            &cancelled,
+            &crate::booster::protected(),
+        ));
     }
     if mode == Mode::Manual && methods.purge_standby && !cancelled() {
         log("Purging standby list");

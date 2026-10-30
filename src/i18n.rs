@@ -253,9 +253,90 @@ pub struct Strings {
     pub license_body: &'static str,
     pub read_gpl: &'static str,
 
+    // Game Booster
+    pub nav_booster: &'static str,
+    pub booster_sub: &'static str,
+    pub booster_pick: &'static str,
+    pub booster_search: &'static str,
+    pub booster_open_apps: &'static str,
+    pub booster_other_processes: &'static str,
+    pub booster_no_match: &'static str,
+    pub booster_refresh: &'static str,
+    pub booster_empty_title: &'static str,
+    pub booster_empty_body: &'static str,
+    pub booster_on: &'static str,
+    pub booster_off: &'static str,
+    pub booster_closed: &'static str,
+    /// Executable name, PID.
+    pub booster_process_line: fn(&str, u32) -> String,
+    pub tile_cpu: &'static str,
+    pub tile_cpu_sub: &'static str,
+    pub tile_memory: &'static str,
+    /// Private memory.
+    pub tile_memory_sub: fn(&str) -> String,
+    pub tile_gpu: &'static str,
+    pub tile_gpu_sub: &'static str,
+    pub tile_vram: &'static str,
+    pub tile_vram_sub: &'static str,
+    pub tile_unavailable: &'static str,
+    pub tile_disk: &'static str,
+    /// Read rate, write rate.
+    pub tile_disk_sub: fn(&str, &str) -> String,
+    pub tile_uptime: &'static str,
+    /// Number of threads.
+    pub tile_uptime_sub: fn(u32) -> String,
+    /// Seconds as "1 h 05 min", "12 min" or "45 s".
+    pub duration: fn(u64) -> String,
+    pub per_second: &'static str,
+    pub boost_options: &'static str,
+    pub boost_options_sub: &'static str,
+    pub tech_priority_title: &'static str,
+    pub tech_priority_desc: &'static str,
+    pub tech_power_title: &'static str,
+    pub tech_power_desc: &'static str,
+    pub tech_plan_title: &'static str,
+    pub tech_plan_desc: &'static str,
+    pub tech_background_title: &'static str,
+    pub tech_background_desc: &'static str,
+    pub tech_memory_title: &'static str,
+    pub tech_memory_desc: &'static str,
+    pub tech_cores_title: &'static str,
+    pub tech_cores_desc: &'static str,
+    pub tech_keep_title: &'static str,
+    pub tech_keep_desc: &'static str,
+    pub boost_button: &'static str,
+    pub boost_busy: &'static str,
+    pub restore_button: &'static str,
+    pub boost_result: &'static str,
+    pub boost_result_empty: &'static str,
+    pub boost_note: &'static str,
+    pub outcome_boost_applied: &'static str,
+    pub outcome_boost_already: &'static str,
+    pub outcome_boost_failed: &'static str,
+    pub outcome_boost_not_available: &'static str,
+    pub outcome_boost_calmed: fn(u32) -> String,
+    pub outcome_boost_freed: fn(&str) -> String,
+    pub boost_done: &'static str,
+    /// Game name.
+    pub boost_done_body: fn(&str) -> String,
+    pub boost_gone: &'static str,
+    pub boost_gone_body: &'static str,
+    pub boost_restored: &'static str,
+    pub boost_restored_body: &'static str,
+    /// Game name.
+    pub boost_exited_body: fn(&str) -> String,
+
     // Tray menu
     pub tray_open: &'static str,
     pub tray_exit: &'static str,
+}
+
+fn duration_text(secs: u64) -> String {
+    match secs {
+        0..=59 => format!("{secs} s"),
+        60..=3599 => format!("{} min", secs / 60),
+        _ => format!("{} h {:02} min", secs / 3600, secs / 60 % 60),
+    }
 }
 
 impl Strings {
@@ -425,6 +506,73 @@ pub static EN: Strings = Strings {
                    It comes with no warranty.",
     read_gpl: "Read the GNU GPL v3",
 
+    nav_booster: "Game Booster",
+    booster_sub: "Give a game more of your computer while you play",
+    booster_pick: "Choose a game…",
+    booster_search: "Search by name",
+    booster_open_apps: "Open apps",
+    booster_other_processes: "Everything else running",
+    booster_no_match: "Nothing matches your search.",
+    booster_refresh: "Refresh list",
+    booster_empty_title: "Choose the game you want to boost",
+    booster_empty_body: "Start your game, then pick it in the list above. You will see how much of your \
+                         computer it uses, and you can boost it with one click.",
+    booster_on: "Boosted",
+    booster_off: "Not boosted",
+    booster_closed: "Closed",
+    booster_process_line: |name, pid| format!("{name} · ID {pid}"),
+    tile_cpu: "Processor",
+    tile_cpu_sub: "of the whole processor",
+    tile_memory: "Memory",
+    tile_memory_sub: |private| format!("{private} only for this game"),
+    tile_gpu: "Graphics",
+    tile_gpu_sub: "graphics card in use",
+    tile_vram: "Video memory",
+    tile_vram_sub: "on the graphics card",
+    tile_unavailable: "not available",
+    tile_disk: "Disk",
+    tile_disk_sub: |read, write| format!("reading {read} · writing {write}"),
+    tile_uptime: "Playing for",
+    tile_uptime_sub: |threads| format!("{threads} tasks running"),
+    duration: duration_text,
+    per_second: "/s",
+    boost_options: "What Game Booster does",
+    boost_options_sub: "Everything is undone when you restore or close the game",
+    tech_priority_title: "Put the game first",
+    tech_priority_desc: "The processor serves the game before other apps.",
+    tech_power_title: "Never slow the game down to save energy",
+    tech_power_desc: "Windows keeps the game on its fastest settings, even on battery.",
+    tech_plan_title: "Maximum performance power mode",
+    tech_plan_desc: "Switches Windows to its high performance mode while you play.",
+    tech_background_title: "Calm down other apps (optional)",
+    tech_background_desc: "Apps in the background, like browsers and chat, get less processor and disk \
+                           time. Voice chat or downloads may slow down while you play.",
+    tech_memory_title: "Free memory before playing",
+    tech_memory_desc: "Frees memory from other apps and the cache, without touching the game.",
+    tech_cores_title: "Use the fastest cores (optional)",
+    tech_cores_desc: "On processors with fast and efficient cores, suggests the fast ones for the game.",
+    tech_keep_title: "Keep the game's memory",
+    tech_keep_desc: "Always on: automatic cleanups leave the game alone while it is boosted.",
+    boost_button: "Boost game",
+    boost_busy: "Boosting…",
+    restore_button: "Restore",
+    boost_result: "Result",
+    boost_result_empty: "Press Boost game to start. You can undo everything at any time.",
+    boost_note: "Changes to these options apply the next time you boost.",
+    outcome_boost_applied: "Done",
+    outcome_boost_already: "Already on",
+    outcome_boost_failed: "Windows did not allow it for this game",
+    outcome_boost_not_available: "Not available on this computer",
+    outcome_boost_calmed: |n| format!("{n} apps calmed down"),
+    outcome_boost_freed: |size| format!("{size} freed"),
+    boost_done: "Game boosted",
+    boost_done_body: |name| format!("{name} now comes first. Everything goes back to normal when it closes."),
+    boost_gone: "Game not found",
+    boost_gone_body: "It may have closed. Choose it again in the list.",
+    boost_restored: "Back to normal",
+    boost_restored_body: "All Game Booster changes were undone.",
+    boost_exited_body: |name| format!("{name} closed, so all Game Booster changes were undone."),
+
     tray_open: "Open OpenMemoryOptimizer",
     tray_exit: "Exit",
 };
@@ -580,6 +728,74 @@ pub static PT_BR: Strings = Strings {
                    Ele não vem com nenhuma garantia.",
     read_gpl: "Ler a GNU GPL v3",
 
+    nav_booster: "Game Booster",
+    booster_sub: "Dê ao jogo mais do seu computador enquanto você joga",
+    booster_pick: "Escolha um jogo…",
+    booster_search: "Buscar pelo nome",
+    booster_open_apps: "Apps abertos",
+    booster_other_processes: "Tudo o que está em execução",
+    booster_no_match: "Nada corresponde à sua busca.",
+    booster_refresh: "Atualizar lista",
+    booster_empty_title: "Escolha o jogo que você quer acelerar",
+    booster_empty_body: "Abra o jogo e escolha-o na lista acima. Você verá quanto do computador ele usa \
+                         e poderá acelerá-lo com um clique.",
+    booster_on: "Acelerado",
+    booster_off: "Não acelerado",
+    booster_closed: "Fechado",
+    booster_process_line: |name, pid| format!("{name} · ID {pid}"),
+    tile_cpu: "Processador",
+    tile_cpu_sub: "do processador inteiro",
+    tile_memory: "Memória",
+    tile_memory_sub: |private| format!("{private} só deste jogo"),
+    tile_gpu: "Gráficos",
+    tile_gpu_sub: "placa de vídeo em uso",
+    tile_vram: "Memória de vídeo",
+    tile_vram_sub: "na placa de vídeo",
+    tile_unavailable: "não disponível",
+    tile_disk: "Disco",
+    tile_disk_sub: |read, write| format!("lendo {read} · gravando {write}"),
+    tile_uptime: "Jogando há",
+    tile_uptime_sub: |threads| format!("{threads} tarefas em execução"),
+    duration: duration_text,
+    per_second: "/s",
+    boost_options: "O que o Game Booster faz",
+    boost_options_sub: "Tudo é desfeito quando você restaura ou fecha o jogo",
+    tech_priority_title: "Colocar o jogo em primeiro lugar",
+    tech_priority_desc: "O processador atende o jogo antes dos outros apps.",
+    tech_power_title: "Nunca deixar o jogo lento para economizar energia",
+    tech_power_desc: "O Windows mantém o jogo nas configurações mais rápidas, mesmo na bateria.",
+    tech_plan_title: "Modo de energia de desempenho máximo",
+    tech_plan_desc: "Coloca o Windows no modo de alto desempenho enquanto você joga.",
+    tech_background_title: "Acalmar os outros apps (opcional)",
+    tech_background_desc: "Apps em segundo plano, como navegadores e chat, recebem menos tempo de \
+                           processador e disco. Chat de voz ou downloads podem ficar mais lentos enquanto \
+                           você joga.",
+    tech_memory_title: "Liberar memória antes de jogar",
+    tech_memory_desc: "Libera memória dos outros apps e do cache, sem mexer no jogo.",
+    tech_cores_title: "Usar os núcleos mais rápidos (opcional)",
+    tech_cores_desc: "Em processadores com núcleos rápidos e econômicos, sugere os rápidos para o jogo.",
+    tech_keep_title: "Manter a memória do jogo",
+    tech_keep_desc: "Sempre ativo: as limpezas automáticas não mexem no jogo enquanto ele está acelerado.",
+    boost_button: "Acelerar jogo",
+    boost_busy: "Acelerando…",
+    restore_button: "Restaurar",
+    boost_result: "Resultado",
+    boost_result_empty: "Toque em Acelerar jogo para começar. Você pode desfazer tudo a qualquer momento.",
+    boost_note: "Mudanças nestas opções valem na próxima vez que você acelerar.",
+    outcome_boost_applied: "Feito",
+    outcome_boost_already: "Já estava ativo",
+    outcome_boost_failed: "O Windows não permitiu para este jogo",
+    outcome_boost_not_available: "Não disponível neste computador",
+    outcome_boost_calmed: |n| format!("{n} apps acalmados"),
+    outcome_boost_freed: |size| format!("{size} liberados"),
+    boost_done: "Jogo acelerado",
+    boost_done_body: |name| format!("{name} agora vem primeiro. Tudo volta ao normal quando ele fechar."),
+    boost_gone: "Jogo não encontrado",
+    boost_gone_body: "Talvez ele tenha fechado. Escolha-o de novo na lista.",
+    boost_restored: "Tudo voltou ao normal",
+    boost_restored_body: "Todas as mudanças do Game Booster foram desfeitas.",
+    boost_exited_body: |name| format!("{name} fechou, então todas as mudanças do Game Booster foram desfeitas."),
+
     tray_open: "Abrir o OpenMemoryOptimizer",
     tray_exit: "Sair",
 };
@@ -627,6 +843,18 @@ mod tests {
             assert!(change.contains("1 GB") && change.contains("2 GB") && change.contains("3 s"));
             assert!((t.version_line)("9.9.9").contains("9.9.9"));
             assert!((t.result_meta)("12:34", t.mode_auto, 3.0).contains("12:34"));
+            assert!((t.booster_process_line)("game.exe", 42).contains("game.exe"));
+            assert!((t.tile_disk_sub)("1 MB/s", "2 MB/s").contains("2 MB/s"));
+            assert!((t.outcome_boost_calmed)(12).contains("12"));
+            assert!((t.boost_exited_body)("My Game").contains("My Game"));
+            assert_eq!(t.nav_booster, "Game Booster");
         }
+    }
+
+    #[test]
+    fn durations() {
+        assert_eq!(duration_text(45), "45 s");
+        assert_eq!(duration_text(12 * 60 + 5), "12 min");
+        assert_eq!(duration_text(3600 + 5 * 60), "1 h 05 min");
     }
 }

@@ -142,8 +142,9 @@ pub struct TrimStats {
     pub empty_ws_ok: u32,
 }
 
-/// `stop` is polled before each process.
-pub fn trim_all_working_sets(stop: &dyn Fn() -> bool) -> std::io::Result<TrimStats> {
+/// `stop` is polled before each process. Processes in `skip` are left alone (the
+/// game while Game Booster is on; the original trims every process).
+pub fn trim_all_working_sets(stop: &dyn Fn() -> bool, skip: &[u32]) -> std::io::Result<TrimStats> {
     let snapshot = OwnedHandle::new(unsafe { CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) })
         .ok_or_else(std::io::Error::last_os_error)?;
     let empty_ws = empty_working_set_fn();
@@ -152,6 +153,10 @@ pub fn trim_all_working_sets(stop: &dyn Fn() -> bool) -> std::io::Result<TrimSta
     entry.dwSize = size_of::<PROCESSENTRY32W>() as u32; // 0x238, as in the original
     let mut more = unsafe { Process32FirstW(snapshot.0, &mut entry) } != 0;
     while more && !stop() {
+        if skip.contains(&entry.th32ProcessID) {
+            more = unsafe { Process32NextW(snapshot.0, &mut entry) } != 0;
+            continue;
+        }
         stats.processes += 1;
         // bInheritHandle is TRUE in the original (edx = -1).
         let h = unsafe { OpenProcess(PROCESS_ALL_ACCESS, TRUE, entry.th32ProcessID) };

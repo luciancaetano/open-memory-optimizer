@@ -97,6 +97,9 @@ pub mod icons {
     pub const DELETE: &str = "\u{E74D}";
     pub const ADD: &str = "\u{E710}";
     pub const STOP: &str = "\u{E71A}";
+    pub const GAME: &str = "\u{E7FC}";
+    pub const REFRESH: &str = "\u{E72C}";
+    pub const UNDO: &str = "\u{E7A7}";
 }
 
 fn load_system_font(fonts: &mut FontDefinitions, name: &str, files: &[&str]) -> bool {

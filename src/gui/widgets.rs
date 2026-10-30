@@ -434,6 +434,80 @@ pub fn stat_card(ui: &mut Ui, size: Vec2, caption: &str, value: &str, sub: &str,
     label(&mut ui, sub, regular(11.5), FAINT);
 }
 
+/// `stat_card` with a soft history chart behind the text. `series` holds the last
+/// `capacity` values (oldest first) and fills in from the right; `max` is the top.
+#[allow(clippy::too_many_arguments)]
+pub fn spark_tile(
+    ui: &mut Ui,
+    size: Vec2,
+    caption: &str,
+    value: &str,
+    sub: &str,
+    color: Color32,
+    series: &[f32],
+    capacity: usize,
+    max: f32,
+) {
+    let (rect, _) = ui.allocate_exact_size(size, Sense::hover());
+    let painter = ui.painter_at(rect);
+    painter.rect(
+        rect,
+        CornerRadius::same(12),
+        CARD,
+        Stroke::new(1.0, STROKE),
+        egui::StrokeKind::Inside,
+    );
+    if series.len() >= 2 && max > 0.0 {
+        let chart = Rect::from_min_max(
+            pos2(rect.left() + 1.0, rect.top() + rect.height() * 0.58),
+            pos2(rect.right() - 1.0, rect.bottom() - 6.0),
+        );
+        // Until `capacity` samples exist, stretch them over the whole width.
+        let span = series.len().clamp(2, capacity.max(2));
+        let step = chart.width() / (span - 1) as f32;
+        let x0 = chart.right() - step * (series.len() - 1) as f32;
+        let pts: Vec<Pos2> = series
+            .iter()
+            .enumerate()
+            .map(|(i, v)| {
+                let f = (v / max).clamp(0.0, 1.0);
+                pos2(x0 + step * i as f32, chart.bottom() - f * chart.height())
+            })
+            .collect();
+        let mut mesh = egui::Mesh::default();
+        let top = color.gamma_multiply(0.22);
+        let bottom = color.gamma_multiply(0.02);
+        for w in pts.windows(2) {
+            let i = mesh.vertices.len() as u32;
+            mesh.colored_vertex(w[0], top);
+            mesh.colored_vertex(w[1], top);
+            mesh.colored_vertex(pos2(w[1].x, chart.bottom()), bottom);
+            mesh.colored_vertex(pos2(w[0].x, chart.bottom()), bottom);
+            mesh.add_triangle(i, i + 1, i + 2);
+            mesh.add_triangle(i, i + 2, i + 3);
+        }
+        painter.add(mesh);
+        painter.line(pts, Stroke::new(1.5, color.gamma_multiply(0.6)));
+    }
+    let inner = rect.shrink2(vec2(16.0, 14.0));
+    let mut ui = ui.new_child(
+        egui::UiBuilder::new()
+            .max_rect(inner)
+            .layout(egui::Layout::top_down(egui::Align::Min)),
+    );
+    ui.set_clip_rect(rect);
+    ui.spacing_mut().item_spacing.y = 2.0;
+    ui.horizontal(|ui| {
+        let (r, _) = ui.allocate_exact_size(vec2(8.0, 8.0), Sense::hover());
+        ui.painter().circle_filled(r.center(), 4.0, color);
+        label(ui, caption, regular(12.5), MUTED);
+    });
+    label(&mut ui, value, semibold(21.0), TEXT);
+    let sub_g = fitted_text(ui.painter(), sub, regular(11.5), FAINT, inner.width(), 1);
+    let (r, _) = ui.allocate_exact_size(sub_g.size(), Sense::hover());
+    ui.painter().galley(r.min, sub_g, FAINT);
+}
+
 /// Row with title + description on the left and a toggle on the right.
 pub fn setting_toggle(ui: &mut Ui, title: &str, desc: &str, value: &mut bool) -> bool {
     let full_w = ui.available_width();
@@ -457,6 +531,9 @@ pub fn setting_toggle(ui: &mut Ui, title: &str, desc: &str, value: &mut bool) ->
     ui.scope_builder(egui::UiBuilder::new().max_rect(toggle_rect), |ui| {
         changed = toggle(ui, value).changed();
     });
+    // The scope above left the cursor under the toggle; text of two or more lines
+    // ends lower, so continue below the whole row.
+    ui.advance_cursor_after_rect(block.union(toggle_rect));
     changed
 }
 

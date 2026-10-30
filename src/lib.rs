@@ -15,12 +15,14 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 pub mod auto;
+pub mod booster;
 pub mod cpu;
 pub mod i18n;
 pub mod instance;
 pub mod memory;
 pub mod optimizer;
 pub mod privilege;
+pub mod process;
 pub mod schedule;
 pub mod settings;
 pub mod techniques;

@@ -29,6 +29,8 @@ Requires Windows 10 or 11 (64-bit).
 - One-click cleanup
 - Automatic cleanup when memory runs low or on a timer
 - Scheduled cleanups (daily, weekly, at sign-in…)
+- Game Booster: pick a running game, watch its processor, memory, graphics and disk use, and give it
+  priority with one click (undone when you restore or close the game)
 - Runs quietly in the system tray
 - English and Portuguese (Brazil)
 
