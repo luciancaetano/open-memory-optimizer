@@ -3,10 +3,10 @@
 ; SPDX-License-Identifier: GPL-3.0-or-later
 ;
 ; Built by build.cmd, which passes the version from Cargo.toml:
-;   ISCC.exe /DAppVersion=0.1.0 installer\OpenMemoryOptimizer.iss
+;   ISCC.exe /DAppVersion=1.0.0 installer\OpenMemoryOptimizer.iss
 
 #ifndef AppVersion
-  #define AppVersion "0.1.0"
+  #define AppVersion "1.0.0"
 #endif
 #define AppName "OpenMemoryOptimizer"
 #define AppExe "OpenMemoryOptimizer.exe"

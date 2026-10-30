@@ -60,6 +60,15 @@ MEMOPT_SNAPSHOT=<dir> target/invoker/debug/OpenMemoryOptimizer.exe
 The page list is `PAGES` in `src/gui/main.rs`. The `dashboard_result` page loads a fixture
 (`load_snapshot_fixture`) so the result card and toast render without running a real optimization.
 
+## Releases
+
+`.github/workflows/release.yml` runs on every push to `main`. A Linux job compares the `[package]`
+version in `Cargo.toml` with the highest existing `vX.Y.Z` release (semver, `sort -V`). Only if it is
+greater does a Windows job run `cargo test --locked` and `build.cmd installer`, then create the release
+`v<version>` with the installer, the zip and `SHA256SUMS.txt`. To release, bump the version in
+`Cargo.toml` (and commit the updated `Cargo.lock`), then push. The About page reads the version from
+`CARGO_PKG_VERSION`.
+
 ## Architecture
 
 **Library (`src/`)**: the core. It has no UI.

@@ -6,6 +6,10 @@
 
 <p align="center">A simple memory optimizer for Windows.</p>
 
+## Download
+
+Get the installer from the [latest release](https://github.com/luciancaetano/open-memory-optimizer/releases/latest).
+
 ## Features
 
 - Live view of memory usage

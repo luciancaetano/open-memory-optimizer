@@ -1196,7 +1196,11 @@ impl App {
                 Self::page_header(
                     ui,
                     "OpenMemoryOptimizer",
-                    "Version 0.1.0 · a simple memory optimizer for Windows",
+                    concat!(
+                        "Version ",
+                        env!("CARGO_PKG_VERSION"),
+                        " · a simple memory optimizer for Windows"
+                    ),
                 );
             });
         });

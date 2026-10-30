@@ -1,0 +1,116 @@
+# OpenMemoryOptimizer - build the installer and publish a GitHub release.
+#
+# Runs on every push to main. It only builds and releases when the version in
+# Cargo.toml is greater than every existing release; otherwise it stops after the
+# version check. To release: bump `version` in Cargo.toml and push to main.
+
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Check version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      release: ${{ steps.version.outputs.release }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compare Cargo.toml version with the latest release
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Cargo.toml version '$version' is not MAJOR.MINOR.PATCH"
+            exit 1
+          fi
+
+          # Highest version among existing release tags (vX.Y.Z).
+          latest=$(gh release list --repo "$GITHUB_REPOSITORY" --limit 1000 --json tagName --jq '.[].tagName' \
+            | sed -n 's/^v\([0-9]\+\.[0-9]\+\.[0-9]\+\)$/\1/p' | sort -V | tail -n1)
+
+          release=false
+          if [ -z "$latest" ]; then
+            echo "No previous release; releasing $version."
+            release=true
+          elif [ "$version" != "$latest" ] && \
+               [ "$(printf '%s\n%s\n' "$latest" "$version" | sort -V | tail -n1)" = "$version" ]; then
+            echo "Version $version is greater than the latest release $latest; releasing."
+            release=true
+          else
+            echo "Version $version is not greater than the latest release $latest; skipping."
+          fi
+
+          if [ "$release" = true ] && git ls-remote --exit-code --tags origin "refs/tags/v$version" >/dev/null; then
+            echo "::error::Tag v$version already exists without a release. Delete the tag or bump the version."
+            exit 1
+          fi
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "release=$release" >> "$GITHUB_OUTPUT"
+
+  release:
+    name: Build and release v${{ needs.check.outputs.version }}
+    needs: check
+    if: needs.check.outputs.release == 'true'
+    runs-on: windows-latest
+    env:
+      VERSION: ${{ needs.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Run tests
+        run: cargo test --locked
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) {
+            choco install innosetup -y --no-progress
+          }
+
+      - name: Build installer
+        shell: cmd
+        run: call build.cmd installer
+
+      - name: Write checksums
+        shell: pwsh
+        run: |
+          $files = "OpenMemoryOptimizer-Setup-$env:VERSION.exe", "OpenMemoryOptimizer-win64.zip"
+          $lines = foreach ($f in $files) {
+            "{0}  {1}" -f (Get-FileHash "dist\$f" -Algorithm SHA256).Hash.ToLower(), $f
+          }
+          $lines | Set-Content -Path dist\SHA256SUMS.txt -Encoding ascii
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          gh release create "v$VERSION" \
+            "dist/OpenMemoryOptimizer-Setup-$VERSION.exe" \
+            "dist/OpenMemoryOptimizer-win64.zip" \
+            "dist/SHA256SUMS.txt" \
+            --target "$GITHUB_SHA" \
+            --title "OpenMemoryOptimizer $VERSION" \
+            --generate-notes
