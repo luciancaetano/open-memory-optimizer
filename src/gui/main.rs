@@ -378,6 +378,16 @@ impl App {
         };
         app.cpu.sample();
         app.sample(Instant::now());
+        // `--minimized` (sign-in task): the window was created hidden; stay in the tray,
+        // or show it after all if the tray icon could not be created.
+        if start_minimized() {
+            if app.tray.is_some() {
+                app.visible = false;
+            } else {
+                cc.egui_ctx
+                    .send_viewport_cmd(ViewportCommand::Visible(true));
+            }
+        }
         app
     }
 
@@ -1444,6 +1454,11 @@ fn run_scheduled_cleanup() {
     }
 }
 
+/// Started by the sign-in task created by the installer: open hidden in the tray.
+fn start_minimized() -> bool {
+    !snapshot_mode() && std::env::args().skip(1).any(|a| a == "--minimized")
+}
+
 fn main() -> eframe::Result {
     if std::env::args().skip(1).any(|a| a == "--optimize") {
         run_scheduled_cleanup();
@@ -1460,6 +1475,7 @@ fn main() -> eframe::Result {
         .with_inner_size([1000.0, 750.0])
         .with_resizable(false)
         .with_decorations(false)
+        .with_visible(!start_minimized())
         .with_icon(icon);
     if snapshot_mode() {
         // Off-screen, never activated, no taskbar button: does not disturb the desktop.
