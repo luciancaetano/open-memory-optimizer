@@ -46,7 +46,7 @@ use open_memory_optimizer::instance::{self, Acquired, ShowRequests};
 use open_memory_optimizer::memory::{self, MemStatus};
 use open_memory_optimizer::optimizer::{self, Methods, Mode, Report};
 use open_memory_optimizer::privilege;
-use open_memory_optimizer::process::ProcStats;
+use open_memory_optimizer::process::{ProcInfo, ProcStats};
 use open_memory_optimizer::schedule::{self, Trigger};
 use open_memory_optimizer::settings::{ScheduleForm, Settings};
 
@@ -68,6 +68,8 @@ pub enum Event {
     GameStats(u64, Option<ProcStats>),
     /// Game Booster finished applying for a PID (`None`: the process was gone).
     Boosted(u32, Option<Box<Session>>),
+    /// The picked game exited and was started again under this process.
+    GameReturned(u64, ProcInfo),
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -709,6 +711,7 @@ impl App {
                 }
                 Event::GameStats(generation, s) => self.game_stats(generation, s),
                 Event::Boosted(pid, s) => self.game_boosted(pid, s),
+                Event::GameReturned(generation, p) => self.game_returned(generation, p),
             }
         }
     }

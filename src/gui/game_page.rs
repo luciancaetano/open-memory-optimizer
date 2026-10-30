@@ -83,25 +83,41 @@ impl Drop for GamePage {
     }
 }
 
-/// Samples the picked process once a second until it exits or another one is picked.
-fn spawn_monitor(shared: Arc<Shared>, pid: u32, generation: u64, stop: Arc<AtomicBool>) {
+/// Sleeps `ms` in short slices; false if `stop` was set meanwhile.
+fn wait(stop: &AtomicBool, ms: u64) -> bool {
+    for _ in 0..ms / 100 {
+        if stop.load(Ordering::Acquire) {
+            return false;
+        }
+        std::thread::sleep(Duration::from_millis(100));
+    }
+    !stop.load(Ordering::Acquire)
+}
+
+/// Samples the picked process once a second until it exits or another one is
+/// picked. After it exits, waits for the same executable to start again and
+/// reports it, so the page follows a game that was closed and reopened.
+fn spawn_monitor(
+    shared: Arc<Shared>,
+    pid: u32,
+    name: String,
+    generation: u64,
+    stop: Arc<AtomicBool>,
+) {
     std::thread::spawn(move || {
-        let Some(mut m) = ProcessMonitor::open(pid) else {
-            shared.send(Event::GameStats(generation, None));
-            return;
-        };
-        while !stop.load(Ordering::Acquire) {
-            let s = m.sample();
-            let gone = s.is_none();
-            shared.send(Event::GameStats(generation, s));
-            if gone {
-                return;
-            }
-            for _ in 0..10 {
-                if stop.load(Ordering::Acquire) {
+        if let Some(mut m) = ProcessMonitor::open(pid) {
+            while let Some(s) = m.sample() {
+                shared.send(Event::GameStats(generation, Some(s)));
+                if !wait(&stop, 1000) {
                     return;
                 }
-                std::thread::sleep(Duration::from_millis(100));
+            }
+        }
+        shared.send(Event::GameStats(generation, None));
+        while wait(&stop, 2000) {
+            if let Some(p) = process::find_relaunch(&process::list(), &name, pid) {
+                shared.send(Event::GameReturned(generation, p));
+                return;
             }
         }
     });
@@ -176,21 +192,53 @@ impl App {
         g.generation += 1;
         let stop = Arc::new(AtomicBool::new(false));
         g.stop = Some(stop.clone());
-        spawn_monitor(self.shared.clone(), p.pid, g.generation, stop);
+        spawn_monitor(
+            self.shared.clone(),
+            p.pid,
+            p.name.clone(),
+            g.generation,
+            stop,
+        );
     }
 
     fn game_boost(&mut self) {
-        let Some(p) = &self.game.picked else { return };
-        if self.game.busy || self.game.session.is_some() || self.game.exited {
+        if self.game.busy || self.game.session.is_some() {
             return;
         }
+        let Some(p) = &self.game.picked else { return };
+        if self.game.exited {
+            // Closed since it was picked: boost it again if it was reopened.
+            let (name, old) = (p.name.clone(), p.pid);
+            self.refresh_processes();
+            match process::find_relaunch(&self.game.procs, &name, old) {
+                Some(again) => self.game_pick(&again),
+                None => {
+                    let t = tr();
+                    self.notify(t.boost_gone, t.boost_gone_body, Level::Warn);
+                    return;
+                }
+            }
+        }
+        let Some(p) = &self.game.picked else { return };
         self.game.busy = true;
         let (pid, opts) = (p.pid, boost::Options::from_settings(&self.settings));
         let shared = self.shared.clone();
         std::thread::spawn(move || {
-            let session = boost::apply(pid, opts).map(Box::new);
+            // Always answer, even if applying fails, so the button never stays busy.
+            let session = std::panic::catch_unwind(|| boost::apply(pid, opts))
+                .ok()
+                .flatten()
+                .map(Box::new);
             shared.send(Event::Boosted(pid, session));
         });
+    }
+
+    /// The closed game was started again: follow the new process.
+    pub(crate) fn game_returned(&mut self, generation: u64, p: ProcInfo) {
+        let g = &self.game;
+        if generation == g.generation && g.exited && g.session.is_none() && !g.busy {
+            self.game_pick(&p);
+        }
     }
 
     /// Undoes the boost. `exited` picks the "the game closed" wording.
@@ -651,10 +699,21 @@ impl App {
                 self.game_restore(false);
             }
         } else {
-            let can = self.game.picked.is_some() && !self.game.exited;
+            let can = self.game.picked.is_some();
             if primary_button(ui, btn, t.boost_button, Some(icons::BOLT), can).clicked() {
                 self.game_boost();
             }
+        }
+        if self.game.exited && !self.game.busy {
+            ui.add_space(4.0);
+            ui.add(
+                egui::Label::new(
+                    egui::RichText::new(t.booster_closed_hint)
+                        .font(regular(12.0))
+                        .color(AMBER),
+                )
+                .wrap(),
+            );
         }
         ui.add_space(6.0);
         card_title(ui, t.boost_result, None);

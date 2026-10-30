@@ -191,6 +191,17 @@ pub fn is_anti_cheat(name: &str) -> bool {
         || n.ends_with("_eac_eos.exe")
 }
 
+/// The game started again after `old_pid` exited: a process with the same
+/// executable name, preferring one with a window.
+pub fn find_relaunch(procs: &[ProcInfo], name: &str, old_pid: u32) -> Option<ProcInfo> {
+    let mut same: Vec<&ProcInfo> = procs
+        .iter()
+        .filter(|p| p.pid != old_pid && p.name.eq_ignore_ascii_case(name))
+        .collect();
+    same.sort_by_key(|p| p.title.is_none());
+    same.first().map(|p| (*p).clone())
+}
+
 pub fn session_of(pid: u32) -> Option<u32> {
     let mut session = 0;
     (unsafe { ProcessIdToSessionId(pid, &mut session) } != 0).then_some(session)
@@ -563,6 +574,41 @@ mod tests {
         assert!(matches(&v[1], "GAME.EXE"));
         assert!(!matches(&v[2], "game"));
         assert!(matches(&v[2], "  "));
+    }
+
+    #[test]
+    fn finds_the_game_when_it_starts_again() {
+        let procs = vec![
+            p(5, "other.exe", Some("Other")),
+            p(7, "Game.exe", None),
+            p(8, "game.exe", Some("My Game")),
+        ];
+        assert_eq!(find_relaunch(&procs, "game.exe", 3).map(|p| p.pid), Some(8));
+        assert_eq!(find_relaunch(&procs, "game.exe", 8).map(|p| p.pid), Some(7));
+        assert_eq!(find_relaunch(&procs, "missing.exe", 3), None);
+    }
+
+    #[test]
+    fn follows_a_process_that_exits_and_starts_again() {
+        use std::os::windows::process::CommandExt;
+        let start = |n: &str| {
+            std::process::Command::new("ping.exe")
+                .args(["-n", n, "127.0.0.1"])
+                .stdout(std::process::Stdio::null())
+                .creation_flags(0x0800_0000) // CREATE_NO_WINDOW
+                .spawn()
+                .unwrap()
+        };
+        let mut first = start("2");
+        let mut m = ProcessMonitor::open(first.id()).unwrap();
+        first.wait().unwrap();
+        assert_eq!(m.sample(), None, "an exited process has no sample");
+
+        let mut again = start("3");
+        let found = find_relaunch(&list(), "PING.EXE", first.id()).map(|p| p.pid);
+        let _ = again.kill();
+        let _ = again.wait();
+        assert_eq!(found, Some(again.id()));
     }
 
     #[test]

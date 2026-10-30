@@ -267,6 +267,7 @@ pub struct Strings {
     pub booster_on: &'static str,
     pub booster_off: &'static str,
     pub booster_closed: &'static str,
+    pub booster_closed_hint: &'static str,
     /// Executable name, PID.
     pub booster_process_line: fn(&str, u32) -> String,
     pub tile_cpu: &'static str,
@@ -521,6 +522,7 @@ pub static EN: Strings = Strings {
     booster_on: "Boosted",
     booster_off: "Not boosted",
     booster_closed: "Closed",
+    booster_closed_hint: "The game was closed. Open it again and it is picked here by itself.",
     booster_process_line: |name, pid| format!("{name} · ID {pid}"),
     tile_cpu: "Processor",
     tile_cpu_sub: "of the whole processor",
@@ -745,6 +747,7 @@ pub static PT_BR: Strings = Strings {
     booster_on: "Acelerado",
     booster_off: "Não acelerado",
     booster_closed: "Fechado",
+    booster_closed_hint: "O jogo foi fechado. Abra-o de novo e ele será escolhido aqui sozinho.",
     booster_process_line: |name, pid| format!("{name} · ID {pid}"),
     tile_cpu: "Processador",
     tile_cpu_sub: "do processador inteiro",
