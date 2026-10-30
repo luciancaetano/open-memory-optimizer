@@ -24,6 +24,10 @@ Steps run in this order; optional ones can be turned off:
 
 It then waits 3 seconds and reports the memory actually freed. Automatic cleanup triggers when free memory falls below a chosen threshold (checked every 5 minutes, optionally only when CPU is idle) or every N minutes. Scheduled cleanups use Windows Task Scheduler (daily, weekly, monthly, at sign-in or when idle).
 
+## Game Booster
+
+Pick a running game to see its processor, memory, graphics, video memory and disk use live. Boosting it gives it high priority, turns off Windows power throttling (EcoQoS) for it, switches to the High performance power plan and frees memory from other apps first; optionally it also lowers the priority of background apps and prefers the fast cores on hybrid CPUs. Automatic cleanups leave a boosted game alone. Every change is undone when you press Restore, when the game closes or when the app exits.
+
 ## Links
 
 - [Website](https://luciancaetano.github.io/open-memory-optimizer/): overview, how it works, FAQ

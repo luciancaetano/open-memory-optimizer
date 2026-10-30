@@ -277,6 +277,7 @@ impl App {
                 title: None,
             });
         p.title = Some("Cyber Racer 2077".into());
+        p.name = "CyberRacer2077.exe".into();
         self.game_pick(&p);
         self.game.boosted = true;
         self.game.results = vec![
