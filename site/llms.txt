@@ -1,6 +1,6 @@
-# OpenMemoryOptimizer
+# Open Memory Optimizer
 
-> OpenMemoryOptimizer is a free, open-source memory (RAM) optimizer for Windows 10 and 11 (64-bit), written in Rust and licensed GPL-3.0-or-later. It frees memory that open apps and Windows hold but are not using, in one click, automatically when memory runs low or on a timer, or on a schedule. No ads, no account, no tracking, no network access.
+> Open Memory Optimizer is a free, open-source memory (RAM) optimizer for Windows 10 and 11 (64-bit), written in Rust and licensed GPL-3.0-or-later. It frees memory that open apps and Windows hold but are not using, in one click, automatically when memory runs low or on a timer, or on a schedule. No ads, no account, no tracking, no network access.
 
 Key facts:
 
