@@ -57,3 +57,6 @@ builds the installer on GitHub Actions and publishes it as a new
 ## License
 
 [GPL-3.0-or-later](LICENSE) © 2026 Lucian Caetano
+
+
+[![OpenRepos](https://img.shields.io/endpoint?url=https://openrepos.org/status/awesome-project.openrepos.org.json&style=flat-square)](https://awesome-project.openrepos.org/)
