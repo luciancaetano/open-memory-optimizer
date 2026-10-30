@@ -74,8 +74,10 @@ Filename: "{sys}\schtasks.exe"; \
   Flags: runhidden; Tasks: autostart
 Filename: "{sys}\schtasks.exe"; Parameters: "/delete /tn ""{#StartupTask}"" /f"; \
   Flags: runhidden; Tasks: not autostart
+; postinstall entries run as the original (non-elevated) user by default, and the app's
+; requireAdministrator manifest then fails with "requires elevation". Inherit Setup's rights.
 Filename: "{app}\{#AppExe}"; Description: "{cm:LaunchProgram,{#AppName}}"; \
-  Flags: nowait postinstall skipifsilent
+  Flags: nowait postinstall skipifsilent runascurrentuser
 
 [UninstallRun]
 Filename: "{sys}\taskkill.exe"; Parameters: "/IM {#AppExe} /F"; Flags: runhidden; RunOnceId: "StopApp"
