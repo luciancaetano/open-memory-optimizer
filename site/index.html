@@ -8,15 +8,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Open Memory Optimizer – Free, open-source memory optimizer for Windows</title>
-  <meta name="description" content="Open Memory Optimizer is a free, open-source RAM cleaner for Windows 10 and 11, written in Rust. Free up memory in one click, automatically when memory runs low, or on a schedule. No ads, no tracking.">
+  <title>Open Memory Optimizer – Free, open-source memory and disk optimizer for Windows</title>
+  <meta name="description" content="Open Memory Optimizer is a free, open-source RAM cleaner and disk cleanup tool for Windows 10 and 11, written in Rust. Free up memory in one click, find what fills your drives, remove junk files and optimize your SSD or hard disk. No ads, no tracking.">
   <link rel="canonical" href="https://luciancaetano.github.io/open-memory-optimizer/">
   <link rel="alternate" type="text/plain" title="llms.txt" href="https://luciancaetano.github.io/open-memory-optimizer/llms.txt">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Open Memory Optimizer">
   <meta property="og:url" content="https://luciancaetano.github.io/open-memory-optimizer/">
   <meta property="og:title" content="Open Memory Optimizer – Free memory optimizer for Windows">
-  <meta property="og:description" content="A free, open-source RAM cleaner for Windows 10 and 11, written in Rust. One-click, automatic and scheduled cleanups.">
+  <meta property="og:description" content="A free, open-source RAM cleaner and disk cleanup tool for Windows 10 and 11, written in Rust. One-click, automatic and scheduled memory cleanups, a disk space analyzer and junk file cleanup.">
   <meta property="og:image" content="https://luciancaetano.github.io/open-memory-optimizer/icon.png">
   <meta property="og:image:alt" content="Open Memory Optimizer icon">
   <meta name="twitter:card" content="summary">
@@ -31,10 +31,10 @@
         "@id": "https://luciancaetano.github.io/open-memory-optimizer/#app",
         "name": "Open Memory Optimizer",
         "alternateName": "OpenMemoryOptimizer",
-        "description": "A free, open-source memory (RAM) optimizer for Windows 10 and 11, written in Rust. It frees memory in one click, automatically when memory runs low or on a timer, and on a schedule.",
+        "description": "A free, open-source memory (RAM) and disk optimizer for Windows 10 and 11, written in Rust. It frees memory in one click, automatically when memory runs low or on a timer, and on a schedule. It also shows what fills each drive, removes junk files and optimizes SSDs and hard disks.",
         "url": "https://luciancaetano.github.io/open-memory-optimizer/",
         "applicationCategory": "UtilitiesApplication",
-        "applicationSubCategory": "Memory optimizer",
+        "applicationSubCategory": "Memory and disk optimizer",
         "operatingSystem": "Windows 10, Windows 11 (64-bit)",
         "inLanguage": ["en", "pt-BR"],
         "isAccessibleForFree": true,
@@ -51,6 +51,9 @@
           "Automatic cleanup when memory runs low or on a timer",
           "Scheduled cleanups: daily, weekly, monthly, at sign-in or when idle",
           "Game Booster: live stats for a chosen game and one-click priority, undone when it closes",
+          "Disk analyzer: the biggest folders and files on any drive, read only",
+          "Disk cleanup: temporary files, browser cache, Windows Update leftovers, Recycle Bin and more",
+          "Drive optimization: TRIM for SSDs, defragmentation for hard disks, smaller hibernate file",
           "Runs in the system tray",
           "Installer or portable zip",
           "English and Brazilian Portuguese interface"
@@ -75,12 +78,17 @@
           {
             "@type": "Question",
             "name": "Is Open Memory Optimizer safe to use?",
-            "acceptedAnswer": { "@type": "Answer", "text": "It only uses memory-management features that Windows already provides. It does not close apps or delete files, collects no data and never connects to the internet. The full source code is public, and each release publishes SHA-256 checksums so you can verify the download." }
+            "acceptedAnswer": { "@type": "Answer", "text": "Memory cleanups only use memory-management features that Windows already provides and never close apps. Disk cleanup removes only junk you choose, such as old temporary files and caches, and the disk analyzer never deletes anything. The app collects no data and never connects to the internet. The full source code is public, and each release publishes SHA-256 checksums so you can verify the download." }
+          },
+          {
+            "@type": "Question",
+            "name": "Does the disk cleanup delete my files?",
+            "acceptedAnswer": { "@type": "Answer", "text": "No. It only removes files that Windows and apps make again when needed: temporary files older than one day, browser caches (not history, passwords or sign-ins), crash reports, Windows Update leftovers and similar junk. Windows parts are removed with the same cleanup tools Windows' own Disk Cleanup uses. Items that cannot be undone, like the Recycle Bin or a previous Windows installation, are off by default and marked. The disk analyzer only lists folders and files and can open them in File Explorer; it cannot delete anything." }
           },
           {
             "@type": "Question",
             "name": "Why does it ask for administrator rights?",
-            "acceptedAnswer": { "@type": "Answer", "text": "Windows only lets programs with administrator rights free memory held by other apps and clear cached memory. Without those rights a memory optimizer can do very little." }
+            "acceptedAnswer": { "@type": "Answer", "text": "Windows only lets programs with administrator rights free memory held by other apps, clear cached memory, remove Windows Update leftovers and optimize drives. Without those rights the app can do very little." }
           },
           {
             "@type": "Question",
@@ -463,7 +471,8 @@
       <p class="lead">
         Open Memory Optimizer is a free, open-source memory (RAM) optimizer for Windows 10 and 11.
         It frees memory that open apps and Windows are holding but not using, with one click,
-        automatically when memory runs low, or on a schedule. It is written in Rust.
+        automatically when memory runs low, or on a schedule. It also shows what fills your drives,
+        cleans up junk files and keeps your SSD or hard disk optimized. It is written in Rust.
       </p>
       <ul class="tags">
         <li><b>Rust</b> native</li>
@@ -486,16 +495,19 @@
     <section class="shot wrap" id="screenshots" aria-roledescription="carousel" aria-label="Screenshots">
       <div class="slider">
         <div class="slides" aria-live="off">
-          <figure class="slide is-active" aria-roledescription="slide" aria-label="1 of 4: Overview">
+          <figure class="slide is-active" aria-roledescription="slide" aria-label="1 of 5: Overview">
             <img src="screenshot.webp" alt="The Open Memory Optimizer window showing memory usage and the result of a cleanup" width="1000" height="750">
           </figure>
-          <figure class="slide" aria-roledescription="slide" aria-label="2 of 4: Game Booster" aria-hidden="true">
+          <figure class="slide" aria-roledescription="slide" aria-label="2 of 5: Game Booster" aria-hidden="true">
             <img src="game-booster.webp" alt="The Game Booster page showing a boosted game with live processor, memory, graphics, video memory and disk use" width="1000" height="750" loading="lazy">
           </figure>
-          <figure class="slide" aria-roledescription="slide" aria-label="3 of 4: Settings" aria-hidden="true">
+          <figure class="slide" aria-roledescription="slide" aria-label="3 of 5: Disk" aria-hidden="true">
+            <img src="disk.webp" alt="The Disk page showing the drives, the biggest folders of drive C: and how much of it is used" width="1000" height="750" loading="lazy">
+          </figure>
+          <figure class="slide" aria-roledescription="slide" aria-label="4 of 5: Settings" aria-hidden="true">
             <img src="settings.webp" alt="The Settings page with language, what to clean and automatic cleanup options" width="1000" height="750" loading="lazy">
           </figure>
-          <figure class="slide" aria-roledescription="slide" aria-label="4 of 4: Schedule" aria-hidden="true">
+          <figure class="slide" aria-roledescription="slide" aria-label="5 of 5: Schedule" aria-hidden="true">
             <img src="schedule.webp" alt="The Schedule page for daily, weekly, monthly, idle or sign-in cleanups" width="1000" height="750" loading="lazy">
           </figure>
         </div>
@@ -509,6 +521,7 @@
       <div class="slider-nav">
         <button class="dot is-active" type="button" aria-label="Show Overview" aria-current="true">Overview</button>
         <button class="dot" type="button" aria-label="Show Game Booster">Game Booster</button>
+        <button class="dot" type="button" aria-label="Show Disk">Disk</button>
         <button class="dot" type="button" aria-label="Show Settings">Settings</button>
         <button class="dot" type="button" aria-label="Show Schedule">Schedule</button>
       </div>
@@ -529,7 +542,7 @@
             <span class="icon green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg></span>
             Safe
           </h3>
-          <p>Rust prevents whole classes of memory bugs. The app has no ads and no tracking, and it never connects to the internet. It only uses the cleanup tools Windows already provides.</p>
+          <p>Rust prevents whole classes of memory bugs. The app has no ads and no tracking, and it never connects to the internet. It relies on the tools Windows already provides, and disk cleanup only touches junk you choose.</p>
         </article>
         <article class="card">
           <h3>
@@ -549,20 +562,50 @@
         <li>Automatic cleanup when memory runs low or on a timer</li>
         <li>Scheduled cleanups: daily, weekly, monthly, at sign-in or when idle</li>
         <li>Game Booster: gives the game you are playing priority</li>
+        <li>Disk analyzer: the biggest folders and files on any drive</li>
+        <li>Disk cleanup: temporary files, caches, update leftovers and more</li>
+        <li>Drive optimization for SSDs and hard disks</li>
+        <li>Shows exactly how much memory or space was freed</li>
         <li>Runs quietly in the system tray</li>
         <li>Installer or portable zip, your choice</li>
         <li>In English and Portuguese (Brazil)</li>
       </ul>
     </section>
 
-    <section class="wrap" id="game-booster">
+    <section class="how wrap" id="game-booster">
       <h2>Game Booster</h2>
       <p class="section-lead">
         Pick the game you are playing and see how much processor, memory, graphics and disk it uses,
         live. One click puts it first: higher priority, no energy saving slowdowns, maximum performance
-        power mode and more free memory. Everything goes back to normal when you restore or close the game.
+        power mode and more free memory. If you want, it also calms down background apps and keeps the
+        game on the fast cores of hybrid processors. Automatic cleanups leave a boosted game alone.
+        Everything goes back to normal when you restore or close the game.
+      </p>
+      <p class="section-lead">
+        It never reads or changes the game's memory or files, and it leaves anti-cheat software alone:
+        it only changes how Windows shares your computer, like Task Manager does.
       </p>
       <p class="section-lead"><a href="#screenshots" data-slide="1">See the Game Booster screen</a></p>
+    </section>
+
+    <section class="how wrap" id="disk">
+      <h2>Disk</h2>
+      <p class="section-lead">
+        Pick a drive to see what fills it, free up space and keep it fast.
+      </p>
+      <ul class="section-lead">
+        <li><b>Analyze</b>: lists the biggest folders, the biggest files and the space each kind of file
+          takes. It only reads. The one thing you can do with a folder is open it in File Explorer.</li>
+        <li><b>Clean up</b>: shows how much each item frees before you clean, then removes old temporary
+          files, browser caches (history, passwords and sign-ins stay), crash reports, Windows Update
+          leftovers, update downloads, picture previews and more. Windows parts go through the same tools
+          as Windows' own Disk Cleanup. Items that cannot be undone, such as the Recycle Bin or a previous
+          Windows installation, are off until you turn them on.</li>
+        <li><b>Optimize</b>: lets Windows send TRIM to an SSD or defragment a hard disk, turns TRIM
+          notifications back on if they are off, makes the hibernate file smaller and removes old
+          Windows parts that updates replaced.</li>
+      </ul>
+      <p class="section-lead"><a href="#screenshots" data-slide="2">See the Disk screen</a></p>
     </section>
 
     <section class="how wrap" id="how-it-works">
@@ -593,11 +636,15 @@
         </details>
         <details>
           <summary>Is Open Memory Optimizer safe to use?</summary>
-          <p>It only uses memory-management features that Windows already provides. It does not close apps or delete files, collects no data and never connects to the internet. The full source code is public, and each release publishes SHA-256 checksums so you can verify the download.</p>
+          <p>Memory cleanups only use memory-management features that Windows already provides and never close apps. Disk cleanup removes only junk you choose, such as old temporary files and caches, and the disk analyzer never deletes anything. The app collects no data and never connects to the internet. The full source code is public, and each release publishes SHA-256 checksums so you can verify the download.</p>
+        </details>
+        <details>
+          <summary>Does the disk cleanup delete my files?</summary>
+          <p>No. It only removes files that Windows and apps make again when needed: temporary files older than one day, browser caches (not history, passwords or sign-ins), crash reports, Windows Update leftovers and similar junk. Windows parts are removed with the same cleanup tools Windows' own Disk Cleanup uses. Items that cannot be undone, like the Recycle Bin or a previous Windows installation, are off by default and marked. The disk analyzer only lists folders and files and can open them in File Explorer; it cannot delete anything.</p>
         </details>
         <details>
           <summary>Why does it ask for administrator rights?</summary>
-          <p>Windows only lets programs with administrator rights free memory held by other apps and clear cached memory. Without those rights a memory optimizer can do very little.</p>
+          <p>Windows only lets programs with administrator rights free memory held by other apps, clear cached memory, remove Windows Update leftovers and optimize drives. Without those rights the app can do very little.</p>
         </details>
         <details>
           <summary>Will freeing memory make my PC faster?</summary>

@@ -1,13 +1,13 @@
 # Open Memory Optimizer
 
-> Open Memory Optimizer is a free, open-source memory (RAM) optimizer for Windows 10 and 11 (64-bit), written in Rust and licensed GPL-3.0-or-later. It frees memory that open apps and Windows hold but are not using, in one click, automatically when memory runs low or on a timer, or on a schedule. No ads, no account, no tracking, no network access.
+> Open Memory Optimizer is a free, open-source memory (RAM) and disk optimizer for Windows 10 and 11 (64-bit), written in Rust and licensed GPL-3.0-or-later. It frees memory that open apps and Windows hold but are not using, in one click, automatically when memory runs low or on a timer, or on a schedule. It also shows what fills each drive, removes junk files and optimizes SSDs and hard disks. No ads, no account, no tracking, no network access.
 
 Key facts:
 
 - Price: free. No paid tier.
 - Platform: Windows 10 and Windows 11, 64-bit. Not available for macOS or Linux.
 - Distribution: installer (`OpenMemoryOptimizer-Setup-<version>.exe`) or portable zip (`OpenMemoryOptimizer-win64.zip`), with `SHA256SUMS.txt` in every release.
-- Requires administrator rights: Windows only lets elevated programs free memory held by other apps and clear cached memory.
+- Requires administrator rights: Windows only lets elevated programs free memory held by other apps, clear cached memory, remove Windows Update leftovers and optimize drives.
 - Not code-signed yet: Windows SmartScreen may show "Windows protected your PC"; choose More info, then Run anyway.
 - Interface languages: English and Brazilian Portuguese.
 - Author: Lucian Caetano.
@@ -27,6 +27,14 @@ It then waits 3 seconds and reports the memory actually freed. Automatic cleanup
 ## Game Booster
 
 Pick a running game to see its processor, memory, graphics, video memory and disk use live. Boosting it gives it high priority, turns off Windows power throttling (EcoQoS) for it, switches to the High performance power plan and frees memory from other apps first; optionally it also lowers the priority of background apps and prefers the fast cores on hybrid CPUs. Automatic cleanups leave a boosted game alone. Every change is undone when you press Restore, when the game closes or when the app exits.
+
+## Disk
+
+Pick a drive (local, removable or network), then:
+
+- Analyze (read only): lists the biggest folders, the 200 biggest files and the space per file type, using space on disk. It does not follow junctions or links and never downloads cloud (OneDrive) placeholders. The only action is opening a folder in File Explorer; it cannot delete anything.
+- Clean up: measures each item first, then removes only the ones you choose. Own rules: temporary files older than one day, browser caches (Chrome, Edge, Brave, Vivaldi, Opera, Firefox; never history, passwords or sign-ins; skipped while that browser is open), app crash reports and game graphics (shader) caches. Windows parts (Windows Update leftovers, Delivery Optimization files, error reports, thumbnails, memory dumps, setup logs, previous Windows installation, old drivers) go through Windows' own Disk Cleanup handlers. Recycle Bin per drive. Items that cannot be undone are off by default. Files in use are skipped, and the space reported is what was really removed.
+- Optimize: runs the Windows optimizer (TRIM for SSDs, defragmentation for hard disks), turns TRIM notifications back on, shrinks or turns off the hibernate file, and cleans up the Windows component store with DISM (never /ResetBase, so updates stay removable).
 
 ## Links
 

@@ -28,9 +28,12 @@ Requires Windows 10 or 11 (64-bit).
 - Live view of memory usage
 - One-click cleanup
 - Automatic cleanup when memory runs low or on a timer
-- Scheduled cleanups (daily, weekly, at sign-in…)
+- Scheduled cleanups (daily, weekly, monthly, at sign-in or when idle)
 - Game Booster: pick a running game, watch its processor, memory, graphics and disk use, and give it
   priority with one click (undone when you restore or close the game)
+- Disk: pick a drive to see its biggest folders and files (read only), clean up junk files
+  (temporary files, browser caches, Windows Update leftovers, Recycle Bin…) and optimize it
+  (TRIM for SSDs, defragmentation for hard disks, smaller hibernate file)
 - Runs quietly in the system tray
 - English and Portuguese (Brazil)
 
